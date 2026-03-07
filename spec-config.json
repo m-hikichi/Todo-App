@@ -1,0 +1,13 @@
+{
+  "project_name": "todo_app",
+  "language": "Go",
+  "framework": "net/http + sqlite + web UI + desktop window UI (Wails or equivalent)",
+  "spec_dir": "docs/specs",
+  "traceability_path": "docs/traceability-matrix.md",
+  "spec_id_prefix": "SPEC",
+  "coding_conventions": {
+    "naming": "Go: MixedCaps, JS: camelCase",
+    "test_framework": "go test",
+    "directory_structure": "cmd/ for entrypoints, internal/ for app logic, web/ for static files"
+  }
+}
