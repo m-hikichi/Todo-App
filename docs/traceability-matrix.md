@@ -6,30 +6,35 @@
 - ⚠️ 仕様更新済み・コード未反映
 - ❌ 未実装
 
-| No. | 仕様ID | 機能ID(FR) | 上位要件ID(F) | 分類コード(FC) | 実装ファイル | 関数/クラス | テストファイル | ステータス |
-|-----|--------|------------|---------------|----------------|--------------|------------|----------------|-----------|
-| 001 | SPEC-001 | FR-001 | F-001 | FC-01-01-001 | TBD | TBD | TBD | ❌ |
-| 002 | SPEC-001 | FR-002 | F-004 | FC-01-01-002 | TBD | TBD | TBD | ❌ |
-| 003 | SPEC-001 | FR-003 | F-005 | FC-01-01-003 | TBD | TBD | TBD | ❌ |
-| 004 | SPEC-001 | FR-004 | F-001 | FC-01-01-001 | TBD | TBD | TBD | ❌ |
-| 005 | SPEC-001 | FR-005 | F-002 | FC-01-02-001 | TBD | TBD | TBD | ❌ |
-| 006 | SPEC-001 | FR-006 | F-003 | FC-01-03-001 | TBD | TBD | TBD | ❌ |
-| 007 | SPEC-001 | FR-007 | F-006 | FC-01-03-002 | TBD | TBD | TBD | ❌ |
-| 008 | SPEC-001 | FR-008 | F-015 | FC-02-01-001 | TBD | TBD | TBD | ❌ |
-| 009 | SPEC-001 | FR-009 | F-016 | FC-02-02-001 | TBD | TBD | TBD | ❌ |
-| 010 | SPEC-001 | FR-010 | F-017 | FC-02-03-001 | TBD | TBD | TBD | ❌ |
-| 011 | SPEC-001 | FR-011 | F-018 | FC-03-01-001 | TBD | TBD | TBD | ❌ |
-| 012 | SPEC-001 | FR-012 | F-019 | FC-03-01-002 | TBD | TBD | TBD | ❌ |
-| 013 | SPEC-001 | FR-013 | F-020 | FC-05-01-001 | TBD | TBD | TBD | ❌ |
-| 014 | SPEC-001 | FR-014 | F-011 | FC-04-02-002 | TBD | TBD | TBD | ❌ |
-| 015 | SPEC-001 | FR-015 | F-014 | FC-04-06-001 | TBD | TBD | TBD | ❌ |
-| 016 | SPEC-002 | FR-001 | F-008 | FC-04-02-001 | TBD | TBD | TBD | ❌ |
-| 017 | SPEC-002 | FR-001 | F-011 | FC-04-02-002 | TBD | TBD | TBD | ❌ |
-| 018 | SPEC-002 | FR-002 | F-008 | FC-04-02-001 | TBD | TBD | TBD | ❌ |
-| 019 | SPEC-002 | FR-003 | F-007 | FC-04-01-001 | TBD | TBD | TBD | ❌ |
-| 020 | SPEC-002 | FR-004 | F-012 | FC-04-05-001 | TBD | TBD | TBD | ❌ |
-| 021 | SPEC-002 | FR-005 | F-013 | FC-04-05-002 | TBD | TBD | TBD | ❌ |
-| 022 | SPEC-002 | FR-006 | F-011 | FC-04-02-002 | TBD | TBD | TBD | ❌ |
-| 023 | SPEC-002 | FR-007 | F-009 | FC-04-03-001 | TBD | TBD | TBD | ❌ |
-| 024 | SPEC-002 | FR-008 | F-010 | FC-04-04-001 | TBD | TBD | TBD | ❌ |
-| 025 | SPEC-002 | FR-009 | F-014 | FC-04-06-001 | TBD | TBD | TBD | ❌ |
+| 要件ID | 仕様ID | 機能ID(FR) | 実装ファイル | 関数/クラス | テストファイル | ステータス |
+|--------|--------|------------|--------------|------------|----------------|-----------|
+| FC-01-01-001 | SPEC-001 | FR-001 | TBD | TBD | TBD | ❌ |
+| FC-01-01-002 | SPEC-001 | FR-002 | TBD | TBD | TBD | ❌ |
+| FC-01-01-003 | SPEC-001 | FR-003 | TBD | TBD | TBD | ❌ |
+| FC-01-01-001 | SPEC-001 | FR-004 | TBD | TBD | TBD | ❌ |
+| FC-01-02-001 | SPEC-001 | FR-005 | TBD | TBD | TBD | ❌ |
+| FC-01-03-001 | SPEC-001 | FR-006 | TBD | TBD | TBD | ❌ |
+| FC-01-03-002 | SPEC-001 | FR-007 | TBD | TBD | TBD | ❌ |
+| FC-01-02-002 | SPEC-001 | FR-008 | TBD | TBD | TBD | ❌ |
+| FC-02-01-002 | SPEC-001 | FR-009 | TBD | TBD | TBD | ❌ |
+| FC-02-01-001 | SPEC-001 | FR-010 | TBD | TBD | TBD | ❌ |
+| FC-02-02-001 | SPEC-001 | FR-011 | TBD | TBD | TBD | ❌ |
+| FC-02-03-001 | SPEC-001 | FR-012 | TBD | TBD | TBD | ❌ |
+| FC-03-01-001 | SPEC-001 | FR-013 | TBD | TBD | TBD | ❌ |
+| FC-03-01-002 | SPEC-001 | FR-014 | TBD | TBD | TBD | ❌ |
+| FC-05-01-001 | SPEC-001 | FR-015 | TBD | TBD | TBD | ❌ |
+| FC-04-02-002 | SPEC-001 | FR-016 | TBD | TBD | TBD | ❌ |
+| FC-04-06-001 | SPEC-001 | FR-017 | TBD | TBD | TBD | ❌ |
+| FC-05-02-001 | SPEC-001 | FR-018 | TBD | TBD | TBD | ❌ |
+| FC-06-01-001 | SPEC-001 | FR-019 | TBD | TBD | TBD | ❌ |
+| FC-04-07-001 | SPEC-001 | FR-020 | TBD | TBD | TBD | ❌ |
+| FC-04-02-001 | SPEC-002 | FR-001 | TBD | TBD | TBD | ❌ |
+| FC-04-02-002 | SPEC-002 | FR-001 | TBD | TBD | TBD | ❌ |
+| FC-04-02-001 | SPEC-002 | FR-002 | TBD | TBD | TBD | ❌ |
+| FC-04-01-001 | SPEC-002 | FR-003 | TBD | TBD | TBD | ❌ |
+| FC-04-05-001 | SPEC-002 | FR-004 | TBD | TBD | TBD | ❌ |
+| FC-04-05-002 | SPEC-002 | FR-005 | TBD | TBD | TBD | ❌ |
+| FC-04-02-002 | SPEC-002 | FR-006 | TBD | TBD | TBD | ❌ |
+| FC-04-03-001 | SPEC-002 | FR-007 | TBD | TBD | TBD | ❌ |
+| FC-04-04-001 | SPEC-002 | FR-008 | TBD | TBD | TBD | ❌ |
+| FC-04-06-001 | SPEC-002 | FR-009 | TBD | TBD | TBD | ❌ |
