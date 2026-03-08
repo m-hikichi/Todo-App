@@ -1,0 +1,10 @@
+.git
+.gitignore
+bin
+dist
+docs
+*.md
+*.exe
+*.dll
+*.dmg
+*.app

@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    />
+    <script type="module" src="https://esm.run/@material/web/all.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="ambient-shape shape-a"></div>
+    <div class="ambient-shape shape-b"></div>
+
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Material Design 3</p>
+          <h1>Todo Control Center</h1>
+        </div>
+        <div class="header-tools">
+          <div class="tool-icons">
+            <div class="icon-with-badge">
+              <md-icon-button id="notification-button" aria-label="通知">
+                <span class="material-symbols-outlined">notifications</span>
+              </md-icon-button>
+              <span id="notification-badge" class="icon-badge hidden">0</span>
+            </div>
+            <md-icon-button id="settings-button" aria-label="通知設定">
+              <span class="material-symbols-outlined">settings</span>
+            </md-icon-button>
+          </div>
+          <section id="notification-popover" class="notification-popover hidden" aria-live="polite">
+            <div class="todo-header">
+              <h2>通知</h2>
+              <span id="notification-popover-count" class="count-pill">0 件</span>
+            </div>
+            <div id="notification-list" class="stack"></div>
+          </section>
+        </div>
+      </header>
+
+      <section class="panel form-panel">
+        <details id="todo-create-collapsible" class="create-collapsible">
+          <summary class="create-summary">
+            <span>Todo作成</span>
+            <span class="material-symbols-outlined create-summary-icon">expand_more</span>
+          </summary>
+          <form id="todo-form" class="todo-form">
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label" for="todo-title">
+                  タイトル
+                  <span class="required-tag">必須</span>
+                </label>
+                <md-outlined-text-field
+                  id="todo-title"
+                  maxlength="120"
+                  placeholder="120文字以内"
+                  required
+                ></md-outlined-text-field>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="todo-description">説明</label>
+                <md-outlined-text-field
+                  id="todo-description"
+                  placeholder="補足情報（任意）"
+                ></md-outlined-text-field>
+              </div>
+            </div>
+
+            <div class="form-row two-col">
+              <div class="form-field">
+                <label class="form-label" for="todo-due-date-trigger">締切日（JST）</label>
+                <button
+                  id="todo-due-date-trigger"
+                  type="button"
+                  class="date-trigger"
+                  data-date-target="due"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                >
+                  <span id="todo-due-date-display" class="date-display placeholder">日付を選択</span>
+                  <span class="material-symbols-outlined">calendar_month</span>
+                </button>
+                <input id="todo-due-date" type="hidden" />
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="todo-due-time">締切時刻（任意）</label>
+                <md-outlined-text-field id="todo-due-time" type="time"></md-outlined-text-field>
+              </div>
+            </div>
+
+            <details id="todo-advanced-settings" class="advanced-settings">
+              <summary class="advanced-summary">
+                <span>詳細設定</span>
+                <span class="material-symbols-outlined advanced-summary-icon">expand_more</span>
+              </summary>
+              <div class="form-row two-col">
+                <div class="form-field">
+                  <label class="form-label" for="todo-start-date-trigger">開始予定日（JST）</label>
+                  <button
+                    id="todo-start-date-trigger"
+                    type="button"
+                    class="date-trigger"
+                    data-date-target="start"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                  >
+                    <span id="todo-start-date-display" class="date-display placeholder">日付を選択</span>
+                    <span class="material-symbols-outlined">calendar_month</span>
+                  </button>
+                  <input id="todo-start-date" type="hidden" />
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="todo-start-time">開始時刻（任意）</label>
+                  <md-outlined-text-field id="todo-start-time" type="time"></md-outlined-text-field>
+                </div>
+              </div>
+
+              <div class="form-row three-col">
+                <div class="form-field">
+                  <label class="form-label" for="todo-assignee">担当者</label>
+                  <md-outlined-text-field
+                    id="todo-assignee"
+                    placeholder="例: Mika"
+                  ></md-outlined-text-field>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="todo-labels">ラベル</label>
+                  <md-outlined-text-field
+                    id="todo-labels"
+                    placeholder="例: work,urgent"
+                  ></md-outlined-text-field>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="todo-recurrence">繰り返し</label>
+                  <md-outlined-select id="todo-recurrence">
+                    <md-select-option value="none" selected>
+                      <div slot="headline">none</div>
+                    </md-select-option>
+                    <md-select-option value="daily">
+                      <div slot="headline">daily</div>
+                    </md-select-option>
+                    <md-select-option value="weekly">
+                      <div slot="headline">weekly</div>
+                    </md-select-option>
+                    <md-select-option value="monthly">
+                      <div slot="headline">monthly</div>
+                    </md-select-option>
+                  </md-outlined-select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="form-label" for="todo-parent">親タスク</label>
+                  <md-outlined-select id="todo-parent">
+                    <md-select-option value="">
+                      <div slot="headline">なし</div>
+                    </md-select-option>
+                  </md-outlined-select>
+                </div>
+              </div>
+            </details>
+
+            <div class="form-actions">
+              <p class="validation-message" id="validation-message"></p>
+              <md-filled-button type="submit">追加</md-filled-button>
+            </div>
+
+            <section id="calendar-popover" class="calendar-popover hidden" role="dialog" aria-label="日付選択">
+              <div class="calendar-header">
+                <button id="calendar-prev" class="calendar-nav-btn" type="button" aria-label="前月">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <p id="calendar-month-label" class="calendar-month-label"></p>
+                <button id="calendar-next" class="calendar-nav-btn" type="button" aria-label="翌月">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
+              <div class="calendar-weekdays" aria-hidden="true">
+                <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+              </div>
+              <div id="calendar-grid" class="calendar-grid"></div>
+              <div class="calendar-footer">
+                <md-text-button id="calendar-clear" type="button">クリア</md-text-button>
+                <md-text-button id="calendar-close" type="button">閉じる</md-text-button>
+              </div>
+            </section>
+          </form>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="todo-header">
+          <h2>Todo一覧</h2>
+          <span id="todo-count" class="count-pill"></span>
+        </div>
+        <div id="todo-list" class="stack"></div>
+      </section>
+    </main>
+
+    <dialog id="notification-settings-dialog" class="settings-dialog">
+      <div class="settings-dialog-form">
+        <h2>通知設定</h2>
+        <div class="grid two-col">
+          <md-outlined-text-field
+            id="start-reminder-minutes"
+            type="number"
+            label="開始予定日の通知(分前)"
+            value="30"
+          ></md-outlined-text-field>
+          <md-outlined-text-field
+            id="due-reminder-minutes"
+            type="number"
+            label="締切日の通知(分前)"
+            value="60"
+          ></md-outlined-text-field>
+        </div>
+        <div class="inline">
+          <span>通知を有効化</span>
+          <md-switch id="notification-enabled" selected></md-switch>
+        </div>
+        <div class="dialog-actions">
+          <md-text-button id="close-notification-settings" type="button">閉じる</md-text-button>
+          <md-filled-button id="save-notification-settings" type="button">設定を保存</md-filled-button>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
