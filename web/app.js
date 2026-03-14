@@ -1404,6 +1404,10 @@ function getFilteredProjects(query) {
   if (!normalizedQuery) {
     return state.availableProjects.slice();
   }
+  const selectedProject = getSelectedProject();
+  if (selectedProject && selectedProject.name.toLowerCase() === normalizedQuery) {
+    return state.availableProjects.slice();
+  }
   return state.availableProjects.filter((project) => project.name.toLowerCase().includes(normalizedQuery));
 }
 
