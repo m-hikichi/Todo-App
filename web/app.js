@@ -308,7 +308,7 @@ function bindEvents() {
       state.selectedProjectId = null;
     }
     openProjectPicker();
-    render();
+    renderProjectField();
   });
 
   els.projectInput.addEventListener("keydown", (event) => {
@@ -743,6 +743,12 @@ function render() {
   renderParentOptions();
   renderTodoList();
   renderNotifications();
+}
+
+function renderProjectField() {
+  syncProjectInput();
+  syncCreateSummary();
+  renderProjectOptions();
 }
 
 function renderProjectOptions() {
@@ -1316,16 +1322,20 @@ async function deleteProject(projectID) {
 }
 
 function openProjectPicker() {
+  if (state.projectPickerOpen) return;
   state.projectPickerOpen = true;
-  render();
+  renderProjectField();
 }
 
 function closeProjectPicker({ commitSelection = true, renderAfter = true } = {}) {
+  if (!state.projectPickerOpen) {
+    return;
+  }
   if (commitSelection) {
     commitProjectSelectionFromInput({ renderAfter: false });
   }
   state.projectPickerOpen = false;
-  if (renderAfter) render();
+  if (renderAfter) renderProjectField();
 }
 
 function commitProjectSelectionFromInput({ renderAfter = true } = {}) {
@@ -1333,7 +1343,7 @@ function commitProjectSelectionFromInput({ renderAfter = true } = {}) {
   if (!query) {
     state.selectedProjectId = null;
     state.projectSearch = "";
-    if (renderAfter) render();
+    if (renderAfter) renderProjectField();
     return;
   }
 
@@ -1353,7 +1363,7 @@ function commitProjectSelectionFromInput({ renderAfter = true } = {}) {
     state.projectSearch = query;
   }
 
-  if (renderAfter) render();
+  if (renderAfter) renderProjectField();
 }
 
 function selectProjectByID(projectID) {
@@ -1362,14 +1372,14 @@ function selectProjectByID(projectID) {
   state.selectedProjectId = project.id;
   state.projectSearch = project.name;
   state.projectPickerOpen = false;
-  render();
+  renderProjectField();
 }
 
 function clearSelectedProject({ renderAfter = true } = {}) {
   state.selectedProjectId = null;
   state.projectSearch = "";
   state.projectPickerOpen = false;
-  if (renderAfter) render();
+  if (renderAfter) renderProjectField();
 }
 
 function syncSelectedProject(fallbackName = "") {
