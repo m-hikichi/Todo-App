@@ -1,6 +1,9 @@
 const state = {
   todos: [],
   editingTodoId: null,
+  editingLabelId: null,
+  availableLabels: [],
+  selectedLabels: [],
   notifications: [],
   calendar: {
     target: null,
@@ -30,11 +33,18 @@ const els = {
   dueDateDisplay: document.getElementById("todo-due-date-display"),
   dueTime: document.getElementById("todo-due-time"),
   assignee: document.getElementById("todo-assignee"),
-  labels: document.getElementById("todo-labels"),
+  labelSelector: document.getElementById("todo-label-selector"),
   recurrence: document.getElementById("todo-recurrence"),
   parent: document.getElementById("todo-parent"),
   cancelEditButton: document.getElementById("todo-cancel-edit"),
   submitButton: document.getElementById("todo-submit-button"),
+  labelManagerButton: document.getElementById("label-manager-button"),
+  labelManagementDialog: document.getElementById("label-management-dialog"),
+  labelNameInput: document.getElementById("label-name-input"),
+  saveLabelButton: document.getElementById("save-label-button"),
+  closeLabelManagementButton: document.getElementById("close-label-management"),
+  labelValidation: document.getElementById("label-validation-message"),
+  labelManagementList: document.getElementById("label-management-list"),
   validation: document.getElementById("validation-message"),
   settingsButton: document.getElementById("settings-button"),
   notificationButton: document.getElementById("notification-button"),
@@ -65,7 +75,7 @@ initializeApp();
 async function initializeApp() {
   render();
   try {
-    await loadTodos();
+    await Promise.all([loadTodos(), loadLabels()]);
     showValidation("");
   } catch (error) {
     console.error(error);
@@ -90,11 +100,31 @@ function bindEvents() {
   els.settingsButton.addEventListener("click", () => {
     closeNotificationPopover();
     closeCalendarPopover();
+    closeDialog(els.labelManagementDialog);
+    resetLabelEditor();
     openDialog(els.settingsDialog);
+  });
+
+  els.labelManagerButton.addEventListener("click", () => {
+    closeNotificationPopover();
+    closeCalendarPopover();
+    closeDialog(els.settingsDialog);
+    resetLabelEditor();
+    render();
+    openDialog(els.labelManagementDialog);
   });
 
   els.closeNotificationSettings.addEventListener("click", () => {
     closeDialog(els.settingsDialog);
+  });
+
+  els.labelManagementDialog.addEventListener("close", () => {
+    resetLabelEditor();
+    render();
+  });
+
+  els.closeLabelManagementButton.addEventListener("click", () => {
+    closeDialog(els.labelManagementDialog);
   });
 
   els.notificationButton.addEventListener("click", (event) => {
@@ -188,6 +218,42 @@ function bindEvents() {
     cancelEditing();
   });
 
+  els.saveLabelButton.addEventListener("click", async () => {
+    await submitLabelEditor();
+  });
+
+  els.labelNameInput.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    await submitLabelEditor();
+  });
+
+  els.labelSelector.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest("button[data-label-name]");
+    if (!button) return;
+
+    toggleSelectedLabel(button.dataset.labelName || "");
+  });
+
+  els.labelManagementList.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const editButton = target.closest("button[data-edit-label-id]");
+    if (editButton) {
+      beginLabelEditing(Number(editButton.dataset.editLabelId));
+      return;
+    }
+
+    const deleteButton = target.closest("button[data-delete-label-id]");
+    if (deleteButton) {
+      await deleteLabel(Number(deleteButton.dataset.deleteLabelId));
+    }
+  });
+
   els.todoList.addEventListener("change", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
@@ -265,6 +331,13 @@ async function loadTodos() {
   syncEditingState();
 }
 
+async function loadLabels() {
+  const labels = await requestJSON("/api/labels");
+  state.availableLabels = Array.isArray(labels) ? labels.map(fromApiLabel).filter((label) => label.name) : [];
+  state.availableLabels.sort((left, right) => left.name.localeCompare(right.name, "ja", { sensitivity: "base" }));
+  syncSelectedLabels();
+}
+
 async function submitTodoForm() {
   if (isEditingTodo()) {
     await updateTodo(state.editingTodoId);
@@ -303,18 +376,13 @@ async function createTodo() {
 }
 
 function buildTodoFromForm() {
-  const labels = (els.labels.value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
   return {
     title: (els.title.value || "").trim(),
     description: (els.description.value || "").trim(),
     startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
     dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
     assignee: (els.assignee.value || "").trim(),
-    labels,
+    labels: state.selectedLabels.slice(),
     recurrence: els.recurrence.value || "none",
     parentTodoId: els.parent.value ? Number(els.parent.value) : null,
   };
@@ -480,6 +548,15 @@ function fromApiTodo(todo) {
   };
 }
 
+function fromApiLabel(label) {
+  return {
+    id: Number(label.id),
+    name: typeof label.name === "string" ? label.name.trim() : "",
+    createdAt: label.created_at || "",
+    updatedAt: label.updated_at || "",
+  };
+}
+
 function toApiTodoPayload(todo) {
   return {
     title: todo.title,
@@ -496,10 +573,65 @@ function toApiTodoPayload(todo) {
 
 function render() {
   updateFormMode();
+  updateLabelEditorMode();
   syncDateDisplays();
+  renderLabelSelector();
+  renderLabelManagementList();
   renderParentOptions();
   renderTodoList();
   renderNotifications();
+}
+
+function renderLabelSelector() {
+  const names = getAvailableLabelNames();
+
+  if (names.length === 0) {
+    els.labelSelector.innerHTML = `<p class="empty label-empty">ラベルはまだありません。ヘッダーのタグアイコンから作成してください。</p>`;
+    return;
+  }
+
+  const selected = new Set(state.selectedLabels);
+  els.labelSelector.innerHTML = names
+    .map(
+      (name) => `
+        <button
+          type="button"
+          class="label-chip-btn${selected.has(name) ? " is-selected" : ""}"
+          data-label-name="${escapeHtml(name)}"
+          aria-pressed="${selected.has(name) ? "true" : "false"}"
+        >
+          #${escapeHtml(name)}
+        </button>
+      `,
+    )
+    .join("");
+}
+
+function renderLabelManagementList() {
+  if (state.availableLabels.length === 0) {
+    els.labelManagementList.innerHTML = `<p class="empty">ラベルはまだありません。</p>`;
+    return;
+  }
+
+  els.labelManagementList.innerHTML = state.availableLabels
+    .map(
+      (label) => `
+        <article class="label-admin-row${label.id === state.editingLabelId ? " is-editing" : ""}">
+          <div>
+            <p class="label-admin-name">#${escapeHtml(label.name)}</p>
+          </div>
+          <div class="label-admin-actions">
+            <button class="secondary-btn secondary-btn-small" type="button" data-edit-label-id="${label.id}">
+              編集
+            </button>
+            <button class="danger-btn danger-btn-small" type="button" data-delete-label-id="${label.id}">
+              削除
+            </button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
 }
 
 function renderParentOptions() {
@@ -642,6 +774,10 @@ function showValidation(message) {
   els.validation.textContent = message;
 }
 
+function showLabelValidation(message) {
+  els.labelValidation.textContent = message;
+}
+
 function clearForm() {
   els.form.reset();
   els.title.value = "";
@@ -651,7 +787,7 @@ function clearForm() {
   els.dueDate.value = "";
   els.dueTime.value = "";
   els.assignee.value = "";
-  els.labels.value = "";
+  state.selectedLabels = [];
   els.parent.value = "";
   els.recurrence.value = "none";
   if (els.advancedSettings.open) {
@@ -703,7 +839,8 @@ function populateForm(todo) {
   applyStoredDateTime("start", todo.startDate);
   applyStoredDateTime("due", todo.dueDate);
   els.assignee.value = todo.assignee;
-  els.labels.value = todo.labels.join(", ");
+  state.selectedLabels = normalizeLabelNames(todo.labels);
+  syncSelectedLabels();
   els.recurrence.value = todo.recurrence || "none";
   renderParentOptions();
   els.parent.value = todo.parentTodoId === null ? "" : String(todo.parentTodoId);
@@ -742,6 +879,153 @@ function isEditingTodo() {
   return Number.isInteger(state.editingTodoId);
 }
 
+function updateLabelEditorMode() {
+  const editing = Number.isInteger(state.editingLabelId);
+  els.saveLabelButton.textContent = editing ? "ラベル更新" : "ラベル作成";
+}
+
+function resetLabelEditor() {
+  state.editingLabelId = null;
+  els.labelNameInput.value = "";
+  showLabelValidation("");
+}
+
+function beginLabelEditing(labelId) {
+  const label = findLabelById(labelId);
+  if (!label) {
+    showLabelValidation("編集対象のラベルが見つかりません。");
+    return;
+  }
+  state.editingLabelId = label.id;
+  els.labelNameInput.value = label.name;
+  showLabelValidation("");
+  els.labelNameInput.focus();
+  render();
+}
+
+async function submitLabelEditor() {
+  const name = (els.labelNameInput.value || "").trim();
+  if (!name) {
+    showLabelValidation("Label name is required.");
+    return;
+  }
+
+  try {
+    if (Number.isInteger(state.editingLabelId)) {
+      const currentLabel = findLabelById(state.editingLabelId);
+      if (!currentLabel) {
+        showLabelValidation("編集対象のラベルが見つかりません。");
+        return;
+      }
+
+      const updated = await requestJSON(`/api/labels/${state.editingLabelId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      replaceSelectedLabel(currentLabel.name, updated && typeof updated.name === "string" ? updated.name : name);
+      await Promise.all([loadLabels(), loadTodos()]);
+    } else {
+      await requestJSON("/api/labels", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      await loadLabels();
+    }
+
+    resetLabelEditor();
+    showLabelValidation("");
+  } catch (error) {
+    console.error(error);
+    showLabelValidation(extractErrorMessage(error, "ラベルの保存に失敗しました。"));
+  }
+
+  render();
+}
+
+async function deleteLabel(labelId) {
+  const label = findLabelById(labelId);
+  if (!label) {
+    showLabelValidation("削除対象のラベルが見つかりません。");
+    return;
+  }
+
+  try {
+    await requestJSON(`/api/labels/${labelId}`, {
+      method: "DELETE",
+    });
+    state.selectedLabels = state.selectedLabels.filter((item) => item !== label.name);
+    if (state.editingLabelId === labelId) {
+      resetLabelEditor();
+    }
+    await Promise.all([loadLabels(), loadTodos()]);
+    showLabelValidation("");
+  } catch (error) {
+    console.error(error);
+    showLabelValidation(extractErrorMessage(error, "ラベルの削除に失敗しました。"));
+  }
+
+  render();
+}
+
+function toggleSelectedLabel(name) {
+  const label = findAvailableLabel(name);
+  if (!label) return;
+  const labelName = label.name;
+
+  if (state.selectedLabels.includes(labelName)) {
+    state.selectedLabels = state.selectedLabels.filter((item) => item !== labelName);
+  } else {
+    state.selectedLabels = normalizeLabelNames([...state.selectedLabels, labelName]);
+  }
+
+  render();
+}
+
+function syncSelectedLabels() {
+  state.selectedLabels = normalizeLabelNames(
+    state.selectedLabels
+      .map((label) => {
+        const matched = findAvailableLabel(label);
+        return matched ? matched.name : "";
+      })
+      .filter(Boolean),
+  );
+}
+
+function findAvailableLabel(name) {
+  const target = String(name || "").trim().toLowerCase();
+  if (!target) return null;
+  return state.availableLabels.find((label) => label.name.toLowerCase() === target) || null;
+}
+
+function findLabelById(id) {
+  return state.availableLabels.find((label) => label.id === id) || null;
+}
+
+function replaceSelectedLabel(previousName, nextName) {
+  state.selectedLabels = normalizeLabelNames(
+    state.selectedLabels.map((label) => (label === previousName ? nextName : label)),
+  );
+}
+
+function getAvailableLabelNames() {
+  return state.availableLabels.map((label) => label.name);
+}
+
+function normalizeLabelNames(labels) {
+  const seen = new Set();
+  return labels
+    .map((label) => String(label || "").trim())
+    .filter((label) => {
+      if (!label) return false;
+      const key = label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => left.localeCompare(right, "ja", { sensitivity: "base" }));
+}
+
 function isValidStartDue(startDate, dueDate) {
   if (!startDate || !dueDate) return true;
   const start = parseDateTime(startDate, "start");
@@ -772,6 +1056,7 @@ function openDialog(dialog) {
 }
 
 function closeDialog(dialog) {
+  if (!dialog.open) return;
   if (typeof dialog.close === "function") {
     dialog.close();
     return;

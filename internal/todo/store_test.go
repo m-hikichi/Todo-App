@@ -2,6 +2,7 @@ package todo
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 )
@@ -11,6 +12,8 @@ func TestStorePersistsTodosAcrossReopen(t *testing.T) {
 	dataDir := t.TempDir()
 
 	store := openTestStore(t, dataDir)
+	mustCreateLabel(t, store, ctx, "home")
+	mustCreateLabel(t, store, ctx, "shopping")
 	created, err := store.CreateTodo(ctx, CreateInput{
 		Title:          "Buy milk",
 		Description:    "2 liters",
@@ -129,6 +132,8 @@ func TestUpdateTodoPersistsEditableFields(t *testing.T) {
 	dataDir := t.TempDir()
 
 	store := openTestStore(t, dataDir)
+	mustCreateLabel(t, store, ctx, "work")
+	mustCreateLabel(t, store, ctx, "priority-high")
 	parent, err := store.CreateTodo(ctx, CreateInput{Title: "Parent", Status: "active"})
 	if err != nil {
 		t.Fatalf("CreateTodo parent failed: %v", err)
@@ -209,6 +214,213 @@ func TestUpdateTodoPersistsEditableFields(t *testing.T) {
 	}
 }
 
+func TestCreateLabelPersistsAcrossReopen(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+
+	store := openTestStore(t, dataDir)
+	created := mustCreateLabel(t, store, ctx, "Work")
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reopened := openTestStore(t, dataDir)
+	t.Cleanup(func() { _ = reopened.Close() })
+
+	labels, err := reopened.ListLabels(ctx)
+	if err != nil {
+		t.Fatalf("ListLabels failed: %v", err)
+	}
+	if len(labels) != 1 {
+		t.Fatalf("expected 1 label, got %d", len(labels))
+	}
+	if labels[0].Name != created.Name {
+		t.Fatalf("expected label %q, got %q", created.Name, labels[0].Name)
+	}
+}
+
+func TestUpdateLabelRenamesTodos(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+
+	store := openTestStore(t, dataDir)
+	label := mustCreateLabel(t, store, ctx, "Home")
+	created, err := store.CreateTodo(ctx, CreateInput{
+		Title:  "Buy milk",
+		Status: "active",
+		Labels: []string{"Home"},
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo failed: %v", err)
+	}
+
+	updated, err := store.UpdateLabel(ctx, label.ID, UpdateLabelInput{Name: "Errands"})
+	if err != nil {
+		t.Fatalf("UpdateLabel failed: %v", err)
+	}
+	if updated.Name != "Errands" {
+		t.Fatalf("expected updated label name Errands, got %q", updated.Name)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reopened := openTestStore(t, dataDir)
+	t.Cleanup(func() { _ = reopened.Close() })
+
+	labels, err := reopened.ListLabels(ctx)
+	if err != nil {
+		t.Fatalf("ListLabels failed: %v", err)
+	}
+	if len(labels) != 1 || labels[0].Name != "Errands" {
+		t.Fatalf("unexpected labels after rename: %#v", labels)
+	}
+
+	todos, err := reopened.ListTodos(ctx, "all")
+	if err != nil {
+		t.Fatalf("ListTodos failed: %v", err)
+	}
+	if len(todos) != 1 {
+		t.Fatalf("expected 1 todo after reopen, got %d", len(todos))
+	}
+	if todos[0].ID != created.ID {
+		t.Fatalf("expected todo id %d, got %d", created.ID, todos[0].ID)
+	}
+	if len(todos[0].Labels) != 1 || todos[0].Labels[0] != "Errands" {
+		t.Fatalf("unexpected todo labels after label rename: %#v", todos[0].Labels)
+	}
+}
+
+func TestDeleteLabelRemovesItFromTodos(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+
+	store := openTestStore(t, dataDir)
+	home := mustCreateLabel(t, store, ctx, "home")
+	mustCreateLabel(t, store, ctx, "work")
+	created, err := store.CreateTodo(ctx, CreateInput{
+		Title:  "Prepare report",
+		Status: "active",
+		Labels: []string{"home", "work"},
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo failed: %v", err)
+	}
+
+	if err := store.DeleteLabel(ctx, home.ID); err != nil {
+		t.Fatalf("DeleteLabel failed: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reopened := openTestStore(t, dataDir)
+	t.Cleanup(func() { _ = reopened.Close() })
+
+	labels, err := reopened.ListLabels(ctx)
+	if err != nil {
+		t.Fatalf("ListLabels failed: %v", err)
+	}
+	if len(labels) != 1 || labels[0].Name != "work" {
+		t.Fatalf("unexpected labels after delete: %#v", labels)
+	}
+
+	todos, err := reopened.ListTodos(ctx, "all")
+	if err != nil {
+		t.Fatalf("ListTodos failed: %v", err)
+	}
+	if len(todos) != 1 {
+		t.Fatalf("expected 1 todo after reopen, got %d", len(todos))
+	}
+	if todos[0].ID != created.ID {
+		t.Fatalf("expected todo id %d, got %d", created.ID, todos[0].ID)
+	}
+	if len(todos[0].Labels) != 1 || todos[0].Labels[0] != "work" {
+		t.Fatalf("unexpected todo labels after label delete: %#v", todos[0].Labels)
+	}
+}
+
+func TestCreateTodoRejectsUnknownLabels(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t, t.TempDir())
+	t.Cleanup(func() { _ = store.Close() })
+
+	_, err := store.CreateTodo(ctx, CreateInput{
+		Title:  "Unknown label todo",
+		Status: "active",
+		Labels: []string{"missing"},
+	})
+	if err == nil {
+		t.Fatal("expected unknown label validation error, got nil")
+	}
+	if !IsValidationError(err) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestOpenSeedsLabelsFromExistingTodos(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+
+	db, err := sql.Open("sqlite3", filepath.Join(dataDir, "todo.db"))
+	if err != nil {
+		t.Fatalf("sql.Open failed: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	_, err = db.ExecContext(
+		ctx,
+		`CREATE TABLE todos (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL,
+			start_date TEXT NOT NULL DEFAULT '',
+			due_date TEXT NOT NULL DEFAULT '',
+			assignee TEXT NOT NULL DEFAULT '',
+			labels_json TEXT NOT NULL DEFAULT '[]',
+			recurrence_rule TEXT NOT NULL DEFAULT 'none',
+			parent_todo_id INTEGER,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		);`,
+	)
+	if err != nil {
+		t.Fatalf("create legacy todo schema failed: %v", err)
+	}
+	_, err = db.ExecContext(
+		ctx,
+		`INSERT INTO todos (title, description, status, labels_json, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		"Legacy todo",
+		"",
+		"active",
+		`["legacy","ops"]`,
+		"2026-03-14T00:00:00Z",
+		"2026-03-14T00:00:00Z",
+	)
+	if err != nil {
+		t.Fatalf("insert legacy todo failed: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close legacy db failed: %v", err)
+	}
+
+	store := openTestStore(t, dataDir)
+	t.Cleanup(func() { _ = store.Close() })
+
+	labels, err := store.ListLabels(ctx)
+	if err != nil {
+		t.Fatalf("ListLabels failed: %v", err)
+	}
+	if len(labels) != 2 {
+		t.Fatalf("expected 2 labels, got %d", len(labels))
+	}
+	if labels[0].Name != "legacy" || labels[1].Name != "ops" {
+		t.Fatalf("unexpected seeded labels: %#v", labels)
+	}
+}
+
 func TestUpdateTodoRejectsParentCycles(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t, t.TempDir())
@@ -246,4 +458,14 @@ func openTestStore(t *testing.T, dataDir string) *Store {
 		t.Fatalf("Open failed: %v", err)
 	}
 	return store
+}
+
+func mustCreateLabel(t *testing.T, store *Store, ctx context.Context, name string) Label {
+	t.Helper()
+
+	label, err := store.CreateLabel(ctx, CreateLabelInput{Name: name})
+	if err != nil {
+		t.Fatalf("CreateLabel(%q) failed: %v", name, err)
+	}
+	return label
 }

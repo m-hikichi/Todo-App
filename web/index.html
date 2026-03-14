@@ -29,6 +29,9 @@
               </md-icon-button>
               <span id="notification-badge" class="icon-badge hidden">0</span>
             </div>
+            <md-icon-button id="label-manager-button" aria-label="ラベル管理">
+              <span class="material-symbols-outlined">sell</span>
+            </md-icon-button>
             <md-icon-button id="settings-button" aria-label="通知設定">
               <span class="material-symbols-outlined">settings</span>
             </md-icon-button>
@@ -121,19 +124,12 @@
                 </div>
               </div>
 
-              <div class="form-row three-col">
+              <div class="form-row two-col">
                 <div class="form-field">
                   <label class="form-label" for="todo-assignee">担当者</label>
                   <md-outlined-text-field
                     id="todo-assignee"
                     placeholder="例: Mika"
-                  ></md-outlined-text-field>
-                </div>
-                <div class="form-field">
-                  <label class="form-label" for="todo-labels">ラベル</label>
-                  <md-outlined-text-field
-                    id="todo-labels"
-                    placeholder="例: work,urgent"
                   ></md-outlined-text-field>
                 </div>
                 <div class="form-field">
@@ -152,6 +148,19 @@
                       <div slot="headline">monthly</div>
                     </md-select-option>
                   </md-outlined-select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <div class="field-header">
+                    <label class="form-label" for="todo-label-selector">ラベル</label>
+                    <span class="field-note">ヘッダーのタグアイコンから管理</span>
+                  </div>
+                  <div class="label-picker">
+                    <p class="label-helper">作成済みラベルから選択して Todo に設定します。</p>
+                    <div id="todo-label-selector" class="label-selector" role="group" aria-label="ラベル選択"></div>
+                  </div>
                 </div>
               </div>
 
@@ -231,6 +240,27 @@
         <div class="dialog-actions">
           <md-text-button id="close-notification-settings" type="button">閉じる</md-text-button>
           <md-filled-button id="save-notification-settings" type="button">設定を保存</md-filled-button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="label-management-dialog" class="settings-dialog">
+      <div class="settings-dialog-form">
+        <h2>ラベル管理</h2>
+        <p class="dialog-copy">ここでラベルの作成・編集・削除を行います。Todoフォームでは既存ラベルの選択だけを行います。</p>
+        <div class="label-dialog-editor">
+          <md-outlined-text-field
+            id="label-name-input"
+            placeholder="ラベル名"
+          ></md-outlined-text-field>
+          <div class="label-dialog-actions">
+            <md-filled-button id="save-label-button" type="button">ラベル作成</md-filled-button>
+          </div>
+        </div>
+        <p id="label-validation-message" class="validation-message dialog-validation"></p>
+        <div id="label-management-list" class="stack"></div>
+        <div class="dialog-actions">
+          <md-text-button id="close-label-management" type="button">閉じる</md-text-button>
         </div>
       </div>
     </dialog>

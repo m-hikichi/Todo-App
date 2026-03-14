@@ -43,8 +43,69 @@ func (a *todoAPI) handleTodos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *todoAPI) handleLabels(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		labels, err := a.store.ListLabels(r.Context())
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, labels)
+	case http.MethodPost:
+		var input todo.CreateLabelInput
+		if err := decodeJSON(r, &input); err != nil {
+			writeError(w, err)
+			return
+		}
+
+		created, err := a.store.CreateLabel(r.Context(), input)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, created)
+	default:
+		w.Header().Set("Allow", "GET, POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *todoAPI) handleLabelByID(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseResourceID(r.URL.Path, "/api/labels/")
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPatch:
+		var input todo.UpdateLabelInput
+		if err := decodeJSON(r, &input); err != nil {
+			writeError(w, err)
+			return
+		}
+
+		updated, err := a.store.UpdateLabel(r.Context(), id, input)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, updated)
+	case http.MethodDelete:
+		if err := a.store.DeleteLabel(r.Context(), id); err != nil {
+			writeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.Header().Set("Allow", "PATCH, DELETE")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func (a *todoAPI) handleTodoByID(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseTodoID(r.URL.Path)
+	id, ok := parseResourceID(r.URL.Path, "/api/todos/")
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -76,8 +137,8 @@ func (a *todoAPI) handleTodoByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseTodoID(path string) (int64, bool) {
-	idPart := strings.TrimPrefix(path, "/api/todos/")
+func parseResourceID(path, prefix string) (int64, bool) {
+	idPart := strings.TrimPrefix(path, prefix)
 	if idPart == "" || strings.Contains(idPart, "/") {
 		return 0, false
 	}
@@ -112,6 +173,8 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, todo.ErrNotFound):
 		http.Error(w, "todo not found", http.StatusNotFound)
+	case errors.Is(err, todo.ErrLabelNotFound):
+		http.Error(w, "label not found", http.StatusNotFound)
 	case todo.IsValidationError(err):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	default:

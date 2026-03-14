@@ -230,6 +230,116 @@ h2 {
   width: 100%;
 }
 
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-note {
+  color: #587067;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.label-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.label-helper {
+  margin: 0;
+  padding-left: 4px;
+  color: #4f675d;
+  font-size: 12px;
+}
+
+.label-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.label-chip-btn {
+  border: 1px solid rgba(111, 127, 119, 0.34);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #21453b;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.label-chip-btn:hover {
+  border-color: rgba(0, 92, 83, 0.38);
+  background: #e5f1ec;
+  transform: translateY(-1px);
+}
+
+.label-chip-btn.is-selected {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.label-empty {
+  margin: 0;
+  font-size: 13px;
+}
+
+.dialog-copy {
+  margin: -4px 0 0;
+  color: #4f675d;
+  font-size: 13px;
+}
+
+.label-dialog-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.label-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.label-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(111, 127, 119, 0.2);
+  border-radius: 16px;
+  background: var(--color-surface-container);
+  padding: 12px 14px;
+}
+
+.label-admin-row.is-editing {
+  border-color: rgba(0, 104, 88, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(0, 104, 88, 0.16);
+}
+
+.label-admin-name {
+  margin: 0;
+  font-weight: 700;
+  color: #173d32;
+}
+
+.label-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .date-trigger {
   min-height: 56px;
   padding: 0 14px;
@@ -532,6 +642,12 @@ h2 {
   background: #cddfd7;
 }
 
+.secondary-btn-small,
+.danger-btn-small {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
 .secondary-btn:disabled {
   opacity: 0.72;
   cursor: default;
@@ -551,6 +667,10 @@ h2 {
   margin: 4px 0 10px;
   color: var(--color-error);
   font-size: 13px;
+}
+
+.dialog-validation {
+  margin: 0;
 }
 
 .todo-header {
@@ -654,5 +774,12 @@ h2 {
 
   .header-tools {
     min-width: 0;
+  }
+
+  .field-header,
+  .label-admin-row,
+  .label-admin-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

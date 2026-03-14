@@ -33,6 +33,8 @@ func main() {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	mux.HandleFunc("/api/labels", api.handleLabels)
+	mux.HandleFunc("/api/labels/", api.handleLabelByID)
 	mux.HandleFunc("/api/todos", api.handleTodos)
 	mux.HandleFunc("/api/todos/", api.handleTodoByID)
 

@@ -33,18 +33,18 @@ func IsValidationError(err error) bool {
 }
 
 type Todo struct {
-	ID             int64   `json:"id"`
-	Title          string  `json:"title"`
-	Description    string  `json:"description"`
-	Status         string  `json:"status"`
-	StartDate      string  `json:"start_date"`
-	DueDate        string  `json:"due_date"`
-	Assignee       string  `json:"assignee"`
+	ID             int64    `json:"id"`
+	Title          string   `json:"title"`
+	Description    string   `json:"description"`
+	Status         string   `json:"status"`
+	StartDate      string   `json:"start_date"`
+	DueDate        string   `json:"due_date"`
+	Assignee       string   `json:"assignee"`
 	Labels         []string `json:"labels"`
-	RecurrenceRule string  `json:"recurrence_rule"`
-	ParentTodoID   *int64  `json:"parent_todo_id"`
-	CreatedAt      string  `json:"created_at"`
-	UpdatedAt      string  `json:"updated_at"`
+	RecurrenceRule string   `json:"recurrence_rule"`
+	ParentTodoID   *int64   `json:"parent_todo_id"`
+	CreatedAt      string   `json:"created_at"`
+	UpdatedAt      string   `json:"updated_at"`
 }
 
 type CreateInput struct {
@@ -163,6 +163,12 @@ func (s *Store) Path() string {
 
 func (s *Store) initSchema(ctx context.Context) error {
 	const schema = `
+CREATE TABLE IF NOT EXISTS labels (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS todos (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	title TEXT NOT NULL,
@@ -177,11 +183,15 @@ CREATE TABLE IF NOT EXISTS todos (
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_todos_created_at ON todos(created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 `
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("init sqlite schema: %w", err)
+	}
+	if err := s.seedLabelsFromTodos(ctx); err != nil {
+		return fmt.Errorf("seed labels from existing todos: %w", err)
 	}
 	return nil
 }
@@ -247,7 +257,12 @@ func (s *Store) CreateTodo(ctx context.Context, input CreateInput) (Todo, error)
 		}
 	}
 
-	labelsJSON, err := json.Marshal(sanitizeLabels(input.Labels))
+	resolvedLabels, err := s.resolveLabels(ctx, tx, input.Labels)
+	if err != nil {
+		return Todo{}, err
+	}
+
+	labelsJSON, err := json.Marshal(resolvedLabels)
 	if err != nil {
 		return Todo{}, fmt.Errorf("encode labels: %w", err)
 	}
@@ -346,6 +361,13 @@ func (s *Store) UpdateTodo(ctx context.Context, id int64, input UpdateInput) (To
 	}
 	if err := validateParentReference(ctx, tx, id, todo.ParentTodoID); err != nil {
 		return Todo{}, err
+	}
+	if input.Labels.Set {
+		resolvedLabels, err := s.resolveLabels(ctx, tx, todo.Labels)
+		if err != nil {
+			return Todo{}, err
+		}
+		todo.Labels = resolvedLabels
 	}
 
 	labelsJSON, err := json.Marshal(sanitizeLabels(todo.Labels))
