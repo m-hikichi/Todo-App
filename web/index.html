@@ -29,9 +29,6 @@
               </md-icon-button>
               <span id="notification-badge" class="icon-badge hidden">0</span>
             </div>
-            <md-icon-button id="label-manager-button" aria-label="ラベル管理">
-              <span class="material-symbols-outlined">sell</span>
-            </md-icon-button>
             <md-icon-button id="settings-button" aria-label="通知設定">
               <span class="material-symbols-outlined">settings</span>
             </md-icon-button>
@@ -69,7 +66,7 @@
           <form id="todo-form" class="todo-form">
             <div class="form-row">
               <div class="form-field">
-                <label class="form-label" for="todo-title">
+                <label class="field-label" for="todo-title">
                   タイトル
                   <span class="required-tag">必須</span>
                 </label>
@@ -81,7 +78,7 @@
                 ></md-outlined-text-field>
               </div>
               <div class="form-field">
-                <label class="form-label" for="todo-description">説明</label>
+                <label class="field-label" for="todo-description">説明</label>
                 <md-outlined-text-field
                   id="todo-description"
                   placeholder="補足情報（任意）"
@@ -89,9 +86,65 @@
               </div>
             </div>
 
+            <div class="form-row">
+              <div class="form-field">
+                <div class="field-header">
+                  <label class="field-label" for="todo-project-input">プロジェクト</label>
+                  <div class="field-actions">
+                    <button id="project-create-toggle" class="inline-link-btn" type="button">
+                      + 新しいプロジェクト
+                    </button>
+                    <button id="project-manager-button" class="inline-link-btn" type="button">
+                      プロジェクトを管理
+                    </button>
+                  </div>
+                </div>
+                <div id="todo-project-picker" class="project-picker">
+                  <div class="project-combobox">
+                    <input
+                      id="todo-project-input"
+                      class="project-combobox-input"
+                      type="text"
+                      placeholder="未設定"
+                      autocomplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded="false"
+                      aria-controls="todo-project-options"
+                    />
+                    <button
+                      id="todo-project-clear"
+                      class="project-clear-btn hidden"
+                      type="button"
+                      aria-label="プロジェクトを解除"
+                    >
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                  <div
+                    id="todo-project-options"
+                    class="project-options hidden"
+                    role="listbox"
+                    aria-label="プロジェクト候補"
+                  ></div>
+                  <p class="project-helper">未設定でも保存できます。候補を検索して1件だけ選択できます。</p>
+                </div>
+                <div id="project-quick-create" class="project-quick-create hidden">
+                  <div class="project-inline-form">
+                    <md-outlined-text-field id="project-name-input" placeholder="プロジェクト名"></md-outlined-text-field>
+                    <div class="project-inline-actions">
+                      <md-filled-button id="save-project-button" type="button">保存</md-filled-button>
+                      <md-text-button id="cancel-project-create" type="button">キャンセル</md-text-button>
+                    </div>
+                  </div>
+                  <p id="project-validation-message" class="validation-message dialog-validation"></p>
+                </div>
+              </div>
+            </div>
+
             <div class="form-row two-col">
               <div class="form-field">
-                <label class="form-label" for="todo-due-date-trigger">締切日（JST）</label>
+                <label class="field-label" for="todo-due-date-trigger">締切日（JST）</label>
                 <button
                   id="todo-due-date-trigger"
                   type="button"
@@ -106,7 +159,7 @@
                 <input id="todo-due-date" type="hidden" />
               </div>
               <div class="form-field">
-                <label class="form-label" for="todo-due-time">締切時刻（任意）</label>
+                <label class="field-label" for="todo-due-time">締切時刻（任意）</label>
                 <md-outlined-text-field id="todo-due-time" type="time"></md-outlined-text-field>
               </div>
             </div>
@@ -118,7 +171,7 @@
               </summary>
               <div class="form-row two-col">
                 <div class="form-field">
-                  <label class="form-label" for="todo-start-date-trigger">開始予定日（JST）</label>
+                  <label class="field-label" for="todo-start-date-trigger">開始予定日（JST）</label>
                   <button
                     id="todo-start-date-trigger"
                     type="button"
@@ -133,21 +186,21 @@
                   <input id="todo-start-date" type="hidden" />
                 </div>
                 <div class="form-field">
-                  <label class="form-label" for="todo-start-time">開始時刻（任意）</label>
+                  <label class="field-label" for="todo-start-time">開始時刻（任意）</label>
                   <md-outlined-text-field id="todo-start-time" type="time"></md-outlined-text-field>
                 </div>
               </div>
 
               <div class="form-row two-col">
                 <div class="form-field">
-                  <label class="form-label" for="todo-assignee">担当者</label>
+                  <label class="field-label" for="todo-assignee">担当者</label>
                   <md-outlined-text-field
                     id="todo-assignee"
                     placeholder="例: Mika"
                   ></md-outlined-text-field>
                 </div>
                 <div class="form-field">
-                  <label class="form-label" for="todo-recurrence">繰り返し</label>
+                  <label class="field-label" for="todo-recurrence">繰り返し</label>
                   <md-outlined-select id="todo-recurrence">
                     <md-select-option value="none" selected>
                       <div slot="headline">なし</div>
@@ -167,20 +220,7 @@
 
               <div class="form-row">
                 <div class="form-field">
-                  <div class="field-header">
-                    <label class="form-label" for="todo-label-selector">ラベル</label>
-                    <span class="field-note">ヘッダーのタグアイコンから管理</span>
-                  </div>
-                  <div class="label-picker">
-                    <p class="label-helper">作成済みラベルから選択してタスクに設定します。</p>
-                    <div id="todo-label-selector" class="label-selector" role="group" aria-label="ラベル選択"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-field">
-                  <label class="form-label" for="todo-parent">親タスク</label>
+                  <label class="field-label" for="todo-parent">親タスク</label>
                   <md-outlined-select id="todo-parent">
                     <md-select-option value="">
                       <div slot="headline">なし</div>
@@ -203,7 +243,7 @@
                 <button id="calendar-prev" class="calendar-nav-btn" type="button" aria-label="前月">
                   <span class="material-symbols-outlined">chevron_left</span>
                 </button>
-                <p id="calendar-month-label" class="calendar-month-label"></p>
+                <p id="calendar-month-heading" class="calendar-month-heading"></p>
                 <button id="calendar-next" class="calendar-nav-btn" type="button" aria-label="翌月">
                   <span class="material-symbols-outlined">chevron_right</span>
                 </button>
@@ -258,23 +298,24 @@
       </div>
     </dialog>
 
-    <dialog id="label-management-dialog" class="settings-dialog">
+    <dialog id="project-management-dialog" class="settings-dialog">
       <div class="settings-dialog-form">
-        <h2>ラベル管理</h2>
-        <p class="dialog-copy">ここでラベルの作成・編集・削除を行います。Todoフォームでは既存ラベルの選択だけを行います。</p>
-        <div class="label-dialog-editor">
+        <h2>プロジェクトを管理</h2>
+        <p class="dialog-copy">ここでプロジェクト名の作成・編集・削除を行います。変更内容はTodoフォームと一覧へすぐ反映されます。</p>
+        <div class="project-dialog-editor">
           <md-outlined-text-field
-            id="label-name-input"
-            placeholder="ラベル名"
+            id="project-manage-name-input"
+            placeholder="プロジェクト名"
           ></md-outlined-text-field>
-          <div class="label-dialog-actions">
-            <md-filled-button id="save-label-button" type="button">ラベル作成</md-filled-button>
+          <div class="project-dialog-actions">
+            <md-filled-button id="save-managed-project-button" type="button">保存</md-filled-button>
+            <md-text-button id="cancel-project-edit" type="button" hidden>キャンセル</md-text-button>
           </div>
         </div>
-        <p id="label-validation-message" class="validation-message dialog-validation"></p>
-        <div id="label-management-list" class="stack"></div>
+        <p id="project-management-validation" class="validation-message dialog-validation"></p>
+        <div id="project-management-list" class="stack"></div>
         <div class="dialog-actions">
-          <md-text-button id="close-label-management" type="button">閉じる</md-text-button>
+          <md-text-button id="close-project-management" type="button">閉じる</md-text-button>
         </div>
       </div>
     </dialog>

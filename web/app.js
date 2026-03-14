@@ -2,9 +2,12 @@ const state = {
   todos: [],
   editingTodoId: null,
   pendingDeleteTodoId: null,
-  editingLabelId: null,
-  availableLabels: [],
-  selectedLabels: [],
+  editingProjectId: null,
+  availableProjects: [],
+  selectedProjectId: null,
+  projectSearch: "",
+  projectPickerOpen: false,
+  projectCreatorOpen: false,
   notifications: [],
   calendar: {
     target: null,
@@ -52,19 +55,29 @@ const els = {
   dueDateTrigger: document.getElementById("todo-due-date-trigger"),
   dueDateDisplay: document.getElementById("todo-due-date-display"),
   dueTime: document.getElementById("todo-due-time"),
+  projectInput: document.getElementById("todo-project-input"),
+  projectPicker: document.getElementById("todo-project-picker"),
+  projectOptions: document.getElementById("todo-project-options"),
+  projectClearButton: document.getElementById("todo-project-clear"),
+  projectCreateToggleButton: document.getElementById("project-create-toggle"),
+  projectCreator: document.getElementById("project-quick-create"),
+  projectNameInput: document.getElementById("project-name-input"),
+  saveProjectButton: document.getElementById("save-project-button"),
+  cancelProjectCreateButton: document.getElementById("cancel-project-create"),
+  projectValidation: document.getElementById("project-validation-message"),
+  projectManagerButton: document.getElementById("project-manager-button"),
+  projectManagementDialog: document.getElementById("project-management-dialog"),
+  projectManageNameInput: document.getElementById("project-manage-name-input"),
+  saveManagedProjectButton: document.getElementById("save-managed-project-button"),
+  cancelProjectEditButton: document.getElementById("cancel-project-edit"),
+  closeProjectManagementButton: document.getElementById("close-project-management"),
+  projectManagementValidation: document.getElementById("project-management-validation"),
+  projectManagementList: document.getElementById("project-management-list"),
   assignee: document.getElementById("todo-assignee"),
-  labelSelector: document.getElementById("todo-label-selector"),
   recurrence: document.getElementById("todo-recurrence"),
   parent: document.getElementById("todo-parent"),
   cancelEditButton: document.getElementById("todo-cancel-edit"),
   submitButton: document.getElementById("todo-submit-button"),
-  labelManagerButton: document.getElementById("label-manager-button"),
-  labelManagementDialog: document.getElementById("label-management-dialog"),
-  labelNameInput: document.getElementById("label-name-input"),
-  saveLabelButton: document.getElementById("save-label-button"),
-  closeLabelManagementButton: document.getElementById("close-label-management"),
-  labelValidation: document.getElementById("label-validation-message"),
-  labelManagementList: document.getElementById("label-management-list"),
   validation: document.getElementById("validation-message"),
   settingsButton: document.getElementById("settings-button"),
   notificationButton: document.getElementById("notification-button"),
@@ -75,7 +88,7 @@ const els = {
   todoCount: document.getElementById("todo-count"),
   notificationList: document.getElementById("notification-list"),
   calendarPopover: document.getElementById("calendar-popover"),
-  calendarMonthLabel: document.getElementById("calendar-month-label"),
+  calendarMonthHeading: document.getElementById("calendar-month-heading"),
   calendarGrid: document.getElementById("calendar-grid"),
   calendarPrev: document.getElementById("calendar-prev"),
   calendarNext: document.getElementById("calendar-next"),
@@ -99,7 +112,7 @@ initializeApp();
 async function initializeApp() {
   render();
   try {
-    await Promise.all([loadTodos(), loadLabels()]);
+    await Promise.all([loadTodos(), loadProjects()]);
     showValidation("");
   } catch (error) {
     console.error(error);
@@ -127,31 +140,36 @@ function bindEvents() {
   els.settingsButton.addEventListener("click", () => {
     closeNotificationPopover();
     closeCalendarPopover();
-    closeDialog(els.labelManagementDialog);
-    resetLabelEditor();
+    closeProjectPicker({ commitSelection: true, renderAfter: false });
+    closeDialog(els.projectManagementDialog);
+    closeProjectCreator({ clearInput: false });
+    resetProjectEditor();
+    render();
     openDialog(els.settingsDialog);
   });
 
-  els.labelManagerButton.addEventListener("click", () => {
+  els.projectManagerButton.addEventListener("click", () => {
     closeNotificationPopover();
     closeCalendarPopover();
+    closeProjectPicker({ commitSelection: true, renderAfter: false });
     closeDialog(els.settingsDialog);
-    resetLabelEditor();
+    closeProjectCreator({ clearInput: false });
+    resetProjectEditor();
     render();
-    openDialog(els.labelManagementDialog);
+    openDialog(els.projectManagementDialog);
   });
 
   els.closeNotificationSettings.addEventListener("click", () => {
     closeDialog(els.settingsDialog);
   });
 
-  els.labelManagementDialog.addEventListener("close", () => {
-    resetLabelEditor();
+  els.projectManagementDialog.addEventListener("close", () => {
+    resetProjectEditor();
     render();
   });
 
-  els.closeLabelManagementButton.addEventListener("click", () => {
-    closeDialog(els.labelManagementDialog);
+  els.closeProjectManagementButton.addEventListener("click", () => {
+    closeDialog(els.projectManagementDialog);
   });
 
   els.notificationButton.addEventListener("click", (event) => {
@@ -227,12 +245,17 @@ function bindEvents() {
     ) {
       closeCalendarPopover();
     }
+
+    if (!els.projectPicker.contains(target)) {
+      closeProjectPicker({ commitSelection: true });
+    }
   });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeNotificationPopover();
       closeCalendarPopover();
+      closeProjectPicker({ commitSelection: true });
     }
   });
 
@@ -253,39 +276,99 @@ function bindEvents() {
     cancelEditing({ collapse: true });
   });
 
-  els.saveLabelButton.addEventListener("click", async () => {
-    await submitLabelEditor();
+  els.projectCreateToggleButton.addEventListener("click", () => {
+    toggleProjectCreator();
   });
 
-  els.labelNameInput.addEventListener("keydown", async (event) => {
+  els.cancelProjectCreateButton.addEventListener("click", () => {
+    closeProjectCreator();
+  });
+
+  els.saveProjectButton.addEventListener("click", async () => {
+    await submitProjectCreator();
+  });
+
+  els.projectNameInput.addEventListener("keydown", async (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    await submitLabelEditor();
+    await submitProjectCreator();
   });
 
-  els.labelSelector.addEventListener("click", (event) => {
+  els.projectInput.addEventListener("focus", () => {
+    openProjectPicker();
+  });
+
+  els.projectInput.addEventListener("click", () => {
+    openProjectPicker();
+  });
+
+  els.projectInput.addEventListener("input", () => {
+    state.projectSearch = String(els.projectInput.value || "");
+    if (getSelectedProjectName() !== state.projectSearch.trim()) {
+      state.selectedProjectId = null;
+    }
+    openProjectPicker();
+    render();
+  });
+
+  els.projectInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeProjectPicker({ commitSelection: true });
+      return;
+    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    commitProjectSelectionFromInput();
+  });
+
+  els.projectClearButton.addEventListener("click", () => {
+    clearSelectedProject();
+  });
+
+  els.projectOptions.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    const button = target.closest("button[data-label-name]");
-    if (!button) return;
+    const option = target.closest("button[data-project-id]");
+    if (!option) return;
 
-    toggleSelectedLabel(button.dataset.labelName || "");
+    const rawProjectID = option.dataset.projectId;
+    if (rawProjectID === "none") {
+      clearSelectedProject();
+      return;
+    }
+    selectProjectByID(Number(rawProjectID));
   });
 
-  els.labelManagementList.addEventListener("click", async (event) => {
+  els.saveManagedProjectButton.addEventListener("click", async () => {
+    await submitProjectEditor();
+  });
+
+  els.cancelProjectEditButton.addEventListener("click", () => {
+    resetProjectEditor();
+    render();
+  });
+
+  els.projectManageNameInput.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    await submitProjectEditor();
+  });
+
+  els.projectManagementList.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
-    const editButton = target.closest("button[data-edit-label-id]");
+    const editButton = target.closest("button[data-edit-project-id]");
     if (editButton) {
-      beginLabelEditing(Number(editButton.dataset.editLabelId));
+      beginProjectEditing(Number(editButton.dataset.editProjectId));
       return;
     }
 
-    const deleteButton = target.closest("button[data-delete-label-id]");
+    const deleteButton = target.closest("button[data-delete-project-id]");
     if (deleteButton) {
-      await deleteLabel(Number(deleteButton.dataset.deleteLabelId));
+      await deleteProject(Number(deleteButton.dataset.deleteProjectId));
     }
   });
 
@@ -349,11 +432,13 @@ async function loadTodos() {
   syncEditingState();
 }
 
-async function loadLabels() {
-  const labels = await requestJSON("/api/labels");
-  state.availableLabels = Array.isArray(labels) ? labels.map(fromApiLabel).filter((label) => label.name) : [];
-  state.availableLabels.sort((left, right) => left.name.localeCompare(right.name, "ja", { sensitivity: "base" }));
-  syncSelectedLabels();
+async function loadProjects() {
+  const projects = await requestJSON("/api/projects");
+  state.availableProjects = Array.isArray(projects)
+    ? projects.map(fromApiProject).filter((project) => project.name)
+    : [];
+  state.availableProjects.sort((left, right) => left.name.localeCompare(right.name, "ja", { sensitivity: "base" }));
+  syncSelectedProject();
 }
 
 async function submitTodoForm() {
@@ -400,7 +485,7 @@ function buildTodoFromForm() {
     startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
     dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
     assignee: (els.assignee.value || "").trim(),
-    labels: state.selectedLabels.slice(),
+    projectId: state.selectedProjectId,
     recurrence: els.recurrence.value || "none",
     parentTodoId: els.parent.value ? Number(els.parent.value) : null,
   };
@@ -421,7 +506,7 @@ async function updateTodo(id) {
       startDate: todo.startDate,
       dueDate: todo.dueDate,
       assignee: todo.assignee,
-      labels: todo.labels,
+      projectId: todo.projectId,
       recurrence: todo.recurrence,
       parentTodoId: todo.parentTodoId,
     });
@@ -453,7 +538,7 @@ async function patchTodo(id, changes) {
   if (Object.hasOwn(changes, "startDate")) payload.start_date = changes.startDate;
   if (Object.hasOwn(changes, "dueDate")) payload.due_date = changes.dueDate;
   if (Object.hasOwn(changes, "assignee")) payload.assignee = changes.assignee;
-  if (Object.hasOwn(changes, "labels")) payload.labels = changes.labels;
+  if (Object.hasOwn(changes, "projectId")) payload.project_id = changes.projectId;
   if (Object.hasOwn(changes, "recurrence")) payload.recurrence_rule = changes.recurrence;
   if (Object.hasOwn(changes, "parentTodoId")) payload.parent_todo_id = changes.parentTodoId;
 
@@ -556,7 +641,7 @@ async function createNextRecurringTodo(todo) {
         startDate: nextStartDate,
         dueDate: hasTimePart(todo.dueDate) ? toInputDateTime(nextDue) : toInputDate(nextDue),
         assignee: todo.assignee,
-        labels: todo.labels,
+        projectId: todo.projectId,
         recurrence: todo.recurrence,
         parentTodoId: todo.parentTodoId,
       }),
@@ -603,6 +688,7 @@ function extractErrorMessage(error, fallback) {
 }
 
 function fromApiTodo(todo) {
+  const project = fromApiProject(todo.project);
   return {
     id: todo.id,
     title: todo.title || "",
@@ -611,7 +697,8 @@ function fromApiTodo(todo) {
     startDate: todo.start_date || "",
     dueDate: todo.due_date || "",
     assignee: todo.assignee || "",
-    labels: Array.isArray(todo.labels) ? todo.labels : [],
+    projectId: Number.isInteger(todo.project_id) ? todo.project_id : project ? project.id : null,
+    project,
     recurrence: todo.recurrence_rule || "none",
     parentTodoId: todo.parent_todo_id ?? null,
     createdAt: todo.created_at || "",
@@ -619,12 +706,15 @@ function fromApiTodo(todo) {
   };
 }
 
-function fromApiLabel(label) {
+function fromApiProject(project) {
+  if (!project || typeof project !== "object") {
+    return null;
+  }
   return {
-    id: Number(label.id),
-    name: typeof label.name === "string" ? label.name.trim() : "",
-    createdAt: label.created_at || "",
-    updatedAt: label.updated_at || "",
+    id: Number(project.id),
+    name: typeof project.name === "string" ? project.name.trim() : "",
+    createdAt: project.created_at || "",
+    updatedAt: project.updated_at || "",
   };
 }
 
@@ -636,7 +726,7 @@ function toApiTodoPayload(todo) {
     start_date: todo.startDate || "",
     due_date: todo.dueDate || "",
     assignee: todo.assignee || "",
-    labels: Array.isArray(todo.labels) ? todo.labels : [],
+    project_id: todo.projectId ?? null,
     recurrence_rule: todo.recurrence || "none",
     parent_todo_id: todo.parentTodoId,
   };
@@ -644,59 +734,88 @@ function toApiTodoPayload(todo) {
 
 function render() {
   updateFormMode();
-  updateLabelEditorMode();
+  updateProjectEditorMode();
+  syncProjectInput();
   syncDateDisplays();
   syncCreateSummary();
-  renderLabelSelector();
-  renderLabelManagementList();
+  renderProjectOptions();
+  renderProjectManagementList();
   renderParentOptions();
   renderTodoList();
   renderNotifications();
 }
 
-function renderLabelSelector() {
-  const names = getAvailableLabelNames();
+function renderProjectOptions() {
+  els.projectOptions.classList.toggle("hidden", !state.projectPickerOpen);
+  els.projectInput.setAttribute("aria-expanded", state.projectPickerOpen ? "true" : "false");
+  els.projectClearButton.classList.toggle("hidden", state.selectedProjectId === null && !state.projectSearch.trim());
+  els.projectCreator.classList.toggle("hidden", !state.projectCreatorOpen);
 
-  if (names.length === 0) {
-    els.labelSelector.innerHTML = `<p class="empty label-empty">ラベルはまだありません。ヘッダーのタグアイコンから作成してください。</p>`;
+  if (!state.projectPickerOpen) {
     return;
   }
 
-  const selected = new Set(state.selectedLabels);
-  els.labelSelector.innerHTML = names
-    .map(
-      (name) => `
-        <button
-          type="button"
-          class="label-chip-btn${selected.has(name) ? " is-selected" : ""}"
-          data-label-name="${escapeHtml(name)}"
-          aria-pressed="${selected.has(name) ? "true" : "false"}"
-        >
-          #${escapeHtml(name)}
-        </button>
-      `,
-    )
-    .join("");
+  const filteredProjects = getFilteredProjects(state.projectSearch);
+  const selectedProject = getSelectedProject();
+  const options = [
+    `
+      <button
+        type="button"
+        class="project-option${selectedProject === null ? " is-selected" : ""}"
+        data-project-id="none"
+        role="option"
+        aria-selected="${selectedProject === null ? "true" : "false"}"
+      >
+        <span class="project-option-name">未設定</span>
+        <span class="project-option-meta">プロジェクトなし</span>
+      </button>
+    `,
+  ];
+
+  if (filteredProjects.length === 0) {
+    options.push('<p class="empty project-empty">一致するプロジェクトはありません。</p>');
+  } else {
+    options.push(
+      filteredProjects
+        .map(
+          (project) => `
+            <button
+              type="button"
+              class="project-option${project.id === state.selectedProjectId ? " is-selected" : ""}"
+              data-project-id="${project.id}"
+              role="option"
+              aria-selected="${project.id === state.selectedProjectId ? "true" : "false"}"
+            >
+              <span class="project-option-name">${escapeHtml(project.name)}</span>
+              <span class="project-option-meta">${project.id === state.selectedProjectId ? "選択中" : "候補"}</span>
+            </button>
+          `,
+        )
+        .join(""),
+    );
+  }
+
+  els.projectOptions.innerHTML = options.join("");
 }
 
-function renderLabelManagementList() {
-  if (state.availableLabels.length === 0) {
-    els.labelManagementList.innerHTML = `<p class="empty">ラベルはまだありません。</p>`;
+function renderProjectManagementList() {
+  if (state.availableProjects.length === 0) {
+    els.projectManagementList.innerHTML = `<p class="empty">プロジェクトはまだありません。</p>`;
     return;
   }
 
-  els.labelManagementList.innerHTML = state.availableLabels
+  els.projectManagementList.innerHTML = state.availableProjects
     .map(
-      (label) => `
-        <article class="label-admin-row${label.id === state.editingLabelId ? " is-editing" : ""}">
+      (project) => `
+        <article class="project-admin-row${project.id === state.editingProjectId ? " is-editing" : ""}">
           <div>
-            <p class="label-admin-name">#${escapeHtml(label.name)}</p>
+            <p class="project-admin-name">${escapeHtml(project.name)}</p>
           </div>
-          <div class="label-admin-actions">
-            <button class="secondary-btn secondary-btn-small" type="button" data-edit-label-id="${label.id}">
+          <div class="project-admin-actions">
+            <button class="secondary-btn secondary-btn-small" type="button" data-edit-project-id="${project.id}">
               編集
             </button>
-            <button class="danger-btn danger-btn-small" type="button" data-delete-label-id="${label.id}">
+            <button class="danger-btn danger-btn-small" type="button" data-delete-project-id="${project.id}">
               削除
             </button>
           </div>
@@ -741,7 +860,7 @@ function renderTodoList() {
 
   els.todoList.innerHTML = visible
     .map((todo) => {
-      const labels = todo.labels.map((label) => `<span class="meta-chip">#${escapeHtml(label)}</span>`).join("");
+      const project = todo.project ? `<span class="meta-chip">プロジェクト ${escapeHtml(todo.project.name)}</span>` : "";
       const parent = todo.parentTodoId ? `<span class="meta-chip">親タスク #${todo.parentTodoId}</span>` : "";
       const isEditing = todo.id === state.editingTodoId;
       return `
@@ -751,14 +870,14 @@ function renderTodoList() {
               <h3 class="todo-title">${escapeHtml(todo.title)}</h3>
               ${todo.description ? `<p class="todo-description">${escapeHtml(todo.description)}</p>` : ""}
             </div>
-            <span class="status-badge status-${todo.status}">${escapeHtml(getStatusLabel(todo.status))}</span>
+            <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
           </div>
           <div class="todo-meta">
             ${todo.startDate ? `<span class="meta-chip">開始 ${formatDateTimeForDisplay(todo.startDate)}</span>` : ""}
             ${todo.dueDate ? `<span class="meta-chip">期限 ${formatDateTimeForDisplay(todo.dueDate)}</span>` : ""}
             ${todo.assignee ? `<span class="meta-chip">担当 ${escapeHtml(todo.assignee)}</span>` : ""}
-            ${todo.recurrence !== "none" ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceLabel(todo.recurrence))}</span>` : ""}
-            ${labels}
+            ${project}
+            ${todo.recurrence !== "none" ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceText(todo.recurrence))}</span>` : ""}
             ${parent}
           </div>
           <div class="todo-actions">
@@ -848,7 +967,7 @@ function renderStatusButtons(todoId, selectedStatus) {
         data-next-status="${status}"
         aria-pressed="${selected ? "true" : "false"}"
       >
-        ${escapeHtml(getStatusLabel(status))}
+        ${escapeHtml(getStatusText(status))}
       </button>
     `;
   }).join("");
@@ -858,8 +977,12 @@ function showValidation(message) {
   els.validation.textContent = message;
 }
 
-function showLabelValidation(message) {
-  els.labelValidation.textContent = message;
+function showProjectValidation(message) {
+  els.projectValidation.textContent = message;
+}
+
+function showProjectManagementValidation(message) {
+  els.projectManagementValidation.textContent = message;
 }
 
 function clearForm({ preserveAdvancedState = false } = {}) {
@@ -871,11 +994,14 @@ function clearForm({ preserveAdvancedState = false } = {}) {
   els.startTime.value = "";
   els.dueDate.value = "";
   els.dueTime.value = "";
+  state.selectedProjectId = null;
+  state.projectSearch = "";
   els.assignee.value = "";
-  state.selectedLabels = [];
   els.parent.value = "";
   els.recurrence.value = "none";
   els.advancedSettings.open = preserveAdvancedState ? advancedWasOpen : false;
+  closeProjectPicker({ commitSelection: false, renderAfter: false });
+  closeProjectCreator();
   syncDateDisplays();
   closeCalendarPopover();
 }
@@ -917,8 +1043,8 @@ function updateFormMode() {
   const open = els.createCollapsible.open;
   els.formHeading.textContent = editing ? "Todoを編集中" : "新しいTodoを追加";
   els.formSummaryText.textContent = editing
-    ? "タイトル・期限・担当者などを見直して保存"
-    : "タイトル・期限・担当者などを設定して追加";
+    ? "タイトル・プロジェクト・期限・担当者などを見直して保存"
+    : "タイトル・プロジェクト・期限・担当者などを設定して追加";
   els.submitButton.textContent = editing ? "更新する" : "追加する";
   els.cancelEditButton.textContent = editing ? "編集をキャンセル" : "キャンセル";
   els.cancelEditButton.hidden = !open;
@@ -952,9 +1078,9 @@ function populateForm(todo) {
   els.description.value = todo.description;
   applyStoredDateTime("start", todo.startDate);
   applyStoredDateTime("due", todo.dueDate);
+  state.selectedProjectId = todo.projectId;
+  syncSelectedProject(todo.project ? todo.project.name : "");
   els.assignee.value = todo.assignee;
-  state.selectedLabels = normalizeLabelNames(todo.labels);
-  syncSelectedLabels();
   els.recurrence.value = todo.recurrence || "none";
   renderParentOptions();
   els.parent.value = todo.parentTodoId === null ? "" : String(todo.parentTodoId);
@@ -983,7 +1109,6 @@ function shouldOpenAdvancedSettings(todo) {
   return Boolean(
     todo.startDate ||
       todo.assignee ||
-      todo.labels.length > 0 ||
       todo.recurrence !== "none" ||
       todo.parentTodoId,
   );
@@ -999,8 +1124,9 @@ function getFormSnapshot() {
     description: (els.description.value || "").trim(),
     startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
     dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
+    projectName: getSelectedProjectName(),
+    projectDraft: state.selectedProjectId === null ? state.projectSearch.trim() : "",
     assignee: (els.assignee.value || "").trim(),
-    labels: state.selectedLabels.slice(),
     recurrence: els.recurrence.value || "none",
     parentTodoId: els.parent.value ? Number(els.parent.value) : null,
   };
@@ -1012,8 +1138,9 @@ function hasFormDraft(snapshot) {
       snapshot.description ||
       snapshot.startDate ||
       snapshot.dueDate ||
+      snapshot.projectName ||
+      snapshot.projectDraft ||
       snapshot.assignee ||
-      snapshot.labels.length > 0 ||
       snapshot.recurrence !== "none" ||
       snapshot.parentTodoId,
   );
@@ -1023,9 +1150,10 @@ function buildFormPreview(snapshot, editing) {
   const meta = [];
   if (snapshot.dueDate) meta.push(`期限 ${formatDateTimeForDisplay(snapshot.dueDate)}`);
   if (snapshot.startDate) meta.push(`開始 ${formatDateTimeForDisplay(snapshot.startDate)}`);
+  if (snapshot.projectName) meta.push(`プロジェクト ${snapshot.projectName}`);
+  if (!snapshot.projectName && snapshot.projectDraft) meta.push(`プロジェクト候補 ${snapshot.projectDraft}`);
   if (snapshot.assignee) meta.push(`担当 ${snapshot.assignee}`);
-  if (snapshot.labels.length > 0) meta.push(`ラベル ${snapshot.labels.length}件`);
-  if (snapshot.recurrence !== "none") meta.push(`繰り返し ${getRecurrenceLabel(snapshot.recurrence)}`);
+  if (snapshot.recurrence !== "none") meta.push(`繰り返し ${getRecurrenceText(snapshot.recurrence)}`);
   if (snapshot.parentTodoId) meta.push(`親タスク #${snapshot.parentTodoId}`);
   if (meta.length === 0) {
     meta.push(editing ? "保存前の内容を保持しています" : "タイトルだけでもすぐに追加できます");
@@ -1037,158 +1165,273 @@ function buildFormPreview(snapshot, editing) {
   };
 }
 
-function updateLabelEditorMode() {
-  const editing = Number.isInteger(state.editingLabelId);
-  els.saveLabelButton.textContent = editing ? "ラベル更新" : "ラベル作成";
+function syncProjectInput() {
+  if (els.projectInput.value !== state.projectSearch) {
+    els.projectInput.value = state.projectSearch;
+  }
+  els.projectCreateToggleButton.textContent = state.projectCreatorOpen
+    ? "作成を閉じる"
+    : "+ 新しいプロジェクト";
 }
 
-function resetLabelEditor() {
-  state.editingLabelId = null;
-  els.labelNameInput.value = "";
-  showLabelValidation("");
+function updateProjectEditorMode() {
+  const editing = Number.isInteger(state.editingProjectId);
+  els.cancelProjectEditButton.hidden = !editing;
+  els.saveManagedProjectButton.textContent = "保存";
 }
 
-function beginLabelEditing(labelId) {
-  const label = findLabelById(labelId);
-  if (!label) {
-    showLabelValidation("編集対象のラベルが見つかりません。");
+function toggleProjectCreator() {
+  if (state.projectCreatorOpen) {
+    closeProjectCreator();
+    render();
     return;
   }
-  state.editingLabelId = label.id;
-  els.labelNameInput.value = label.name;
-  showLabelValidation("");
-  els.labelNameInput.focus();
+
+  state.projectCreatorOpen = true;
+  els.projectNameInput.value = state.selectedProjectId === null ? state.projectSearch.trim() : "";
+  showProjectValidation("");
   render();
+  els.projectNameInput.focus();
 }
 
-async function submitLabelEditor() {
-  const name = (els.labelNameInput.value || "").trim();
+function closeProjectCreator({ clearInput = true } = {}) {
+  state.projectCreatorOpen = false;
+  if (clearInput) {
+    els.projectNameInput.value = "";
+  }
+  showProjectValidation("");
+}
+
+async function submitProjectCreator() {
+  const name = normalizeProjectName(els.projectNameInput.value);
   if (!name) {
-    showLabelValidation("ラベル名を入力してください。");
+    showProjectValidation("プロジェクト名を入力してください。");
+    return;
+  }
+  if (findProjectByName(name)) {
+    showProjectValidation("このプロジェクト名はすでに存在します");
     return;
   }
 
   try {
-    if (Number.isInteger(state.editingLabelId)) {
-      const currentLabel = findLabelById(state.editingLabelId);
-      if (!currentLabel) {
-        showLabelValidation("編集対象のラベルが見つかりません。");
-        return;
-      }
+    const created = await requestJSON("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    const project = fromApiProject(created);
+    state.selectedProjectId = project ? project.id : null;
+    state.projectSearch = project ? project.name : name;
+    await loadProjects();
+    closeProjectCreator();
+    showProjectValidation("");
+    closeProjectPicker({ commitSelection: false, renderAfter: false });
+  } catch (error) {
+    console.error(error);
+    showProjectValidation(extractProjectErrorMessage(error, "プロジェクトの保存に失敗しました。"));
+  }
 
-      const updated = await requestJSON(`/api/labels/${state.editingLabelId}`, {
+  render();
+}
+
+function resetProjectEditor() {
+  state.editingProjectId = null;
+  els.projectManageNameInput.value = "";
+  showProjectManagementValidation("");
+}
+
+function beginProjectEditing(projectID) {
+  const project = findProjectByID(projectID);
+  if (!project) {
+    showProjectManagementValidation("編集対象のプロジェクトが見つかりません。");
+    return;
+  }
+  state.editingProjectId = project.id;
+  els.projectManageNameInput.value = project.name;
+  showProjectManagementValidation("");
+  render();
+  els.projectManageNameInput.focus();
+}
+
+async function submitProjectEditor() {
+  const name = normalizeProjectName(els.projectManageNameInput.value);
+  if (!name) {
+    showProjectManagementValidation("プロジェクト名を入力してください。");
+    return;
+  }
+
+  try {
+    if (Number.isInteger(state.editingProjectId)) {
+      await requestJSON(`/api/projects/${state.editingProjectId}`, {
         method: "PATCH",
         body: JSON.stringify({ name }),
       });
-      replaceSelectedLabel(currentLabel.name, updated && typeof updated.name === "string" ? updated.name : name);
-      await Promise.all([loadLabels(), loadTodos()]);
+      await Promise.all([loadProjects(), loadTodos()]);
     } else {
-      await requestJSON("/api/labels", {
+      await requestJSON("/api/projects", {
         method: "POST",
         body: JSON.stringify({ name }),
       });
-      await loadLabels();
+      await loadProjects();
     }
 
-    resetLabelEditor();
-    showLabelValidation("");
+    resetProjectEditor();
+    showProjectManagementValidation("");
   } catch (error) {
     console.error(error);
-    showLabelValidation(extractErrorMessage(error, "ラベルの保存に失敗しました。"));
+    showProjectManagementValidation(extractProjectErrorMessage(error, "プロジェクトの保存に失敗しました。"));
   }
 
   render();
 }
 
-async function deleteLabel(labelId) {
-  const label = findLabelById(labelId);
-  if (!label) {
-    showLabelValidation("削除対象のラベルが見つかりません。");
+async function deleteProject(projectID) {
+  const project = findProjectByID(projectID);
+  if (!project) {
+    showProjectManagementValidation("削除対象のプロジェクトが見つかりません。");
+    return;
+  }
+  if (!window.confirm("このプロジェクトを削除しますか？")) {
     return;
   }
 
   try {
-    await requestJSON(`/api/labels/${labelId}`, {
+    await requestJSON(`/api/projects/${projectID}`, {
       method: "DELETE",
     });
-    state.selectedLabels = state.selectedLabels.filter((item) => item !== label.name);
-    if (state.editingLabelId === labelId) {
-      resetLabelEditor();
+    if (state.selectedProjectId === projectID) {
+      state.selectedProjectId = null;
+      state.projectSearch = "";
     }
-    await Promise.all([loadLabels(), loadTodos()]);
-    showLabelValidation("");
+    if (state.editingProjectId === projectID) {
+      resetProjectEditor();
+    }
+    await Promise.all([loadProjects(), loadTodos()]);
+    showProjectManagementValidation("");
   } catch (error) {
     console.error(error);
-    showLabelValidation(extractErrorMessage(error, "ラベルの削除に失敗しました。"));
+    showProjectManagementValidation(extractProjectErrorMessage(error, "プロジェクトの削除に失敗しました。"));
   }
 
   render();
 }
 
-function toggleSelectedLabel(name) {
-  const label = findAvailableLabel(name);
-  if (!label) return;
-  const labelName = label.name;
+function openProjectPicker() {
+  state.projectPickerOpen = true;
+  render();
+}
 
-  if (state.selectedLabels.includes(labelName)) {
-    state.selectedLabels = state.selectedLabels.filter((item) => item !== labelName);
+function closeProjectPicker({ commitSelection = true, renderAfter = true } = {}) {
+  if (commitSelection) {
+    commitProjectSelectionFromInput({ renderAfter: false });
+  }
+  state.projectPickerOpen = false;
+  if (renderAfter) render();
+}
+
+function commitProjectSelectionFromInput({ renderAfter = true } = {}) {
+  const query = normalizeProjectName(state.projectSearch);
+  if (!query) {
+    state.selectedProjectId = null;
+    state.projectSearch = "";
+    if (renderAfter) render();
+    return;
+  }
+
+  const exactMatch = findProjectByName(query);
+  if (exactMatch) {
+    state.selectedProjectId = exactMatch.id;
+    state.projectSearch = exactMatch.name;
+  } else if (state.selectedProjectId !== null) {
+    const selectedProject = getSelectedProject();
+    if (selectedProject) {
+      state.projectSearch = selectedProject.name;
+    } else {
+      state.selectedProjectId = null;
+      state.projectSearch = query;
+    }
   } else {
-    state.selectedLabels = normalizeLabelNames([...state.selectedLabels, labelName]);
+    state.projectSearch = query;
   }
 
+  if (renderAfter) render();
+}
+
+function selectProjectByID(projectID) {
+  const project = findProjectByID(projectID);
+  if (!project) return;
+  state.selectedProjectId = project.id;
+  state.projectSearch = project.name;
+  state.projectPickerOpen = false;
   render();
 }
 
-function syncSelectedLabels() {
-  state.selectedLabels = normalizeLabelNames(
-    state.selectedLabels
-      .map((label) => {
-        const matched = findAvailableLabel(label);
-        return matched ? matched.name : "";
-      })
-      .filter(Boolean),
-  );
+function clearSelectedProject({ renderAfter = true } = {}) {
+  state.selectedProjectId = null;
+  state.projectSearch = "";
+  state.projectPickerOpen = false;
+  if (renderAfter) render();
 }
 
-function findAvailableLabel(name) {
-  const target = String(name || "").trim().toLowerCase();
+function syncSelectedProject(fallbackName = "") {
+  if (state.selectedProjectId === null) {
+    if (!state.projectSearch && fallbackName) {
+      state.projectSearch = fallbackName;
+    }
+    return;
+  }
+
+  const project = findProjectByID(state.selectedProjectId);
+  if (!project) {
+    state.selectedProjectId = null;
+    state.projectSearch = fallbackName;
+    return;
+  }
+  state.projectSearch = project.name;
+}
+
+function getFilteredProjects(query) {
+  const normalizedQuery = normalizeProjectName(query).toLowerCase();
+  if (!normalizedQuery) {
+    return state.availableProjects.slice();
+  }
+  return state.availableProjects.filter((project) => project.name.toLowerCase().includes(normalizedQuery));
+}
+
+function getSelectedProject() {
+  return findProjectByID(state.selectedProjectId);
+}
+
+function getSelectedProjectName() {
+  const project = getSelectedProject();
+  return project ? project.name : "";
+}
+
+function findProjectByID(projectID) {
+  return state.availableProjects.find((project) => project.id === projectID) || null;
+}
+
+function findProjectByName(name) {
+  const target = normalizeProjectName(name).toLowerCase();
   if (!target) return null;
-  return state.availableLabels.find((label) => label.name.toLowerCase() === target) || null;
+  return state.availableProjects.find((project) => project.name.toLowerCase() === target) || null;
 }
 
-function findLabelById(id) {
-  return state.availableLabels.find((label) => label.id === id) || null;
+function normalizeProjectName(name) {
+  return String(name || "").trim();
 }
 
-function replaceSelectedLabel(previousName, nextName) {
-  state.selectedLabels = normalizeLabelNames(
-    state.selectedLabels.map((label) => (label === previousName ? nextName : label)),
-  );
+function extractProjectErrorMessage(error, fallback) {
+  const message = extractErrorMessage(error, fallback);
+  if (message === "project already exists") return "このプロジェクト名はすでに存在します";
+  if (message === "project name is required") return "プロジェクト名を入力してください。";
+  return message;
 }
 
-function getAvailableLabelNames() {
-  return state.availableLabels.map((label) => label.name);
-}
-
-function normalizeLabelNames(labels) {
-  const seen = new Set();
-  return labels
-    .map((label) => String(label || "").trim())
-    .filter((label) => {
-      if (!label) return false;
-      const key = label.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((left, right) => left.localeCompare(right, "ja", { sensitivity: "base" }));
-}
-
-function getStatusLabel(status) {
+function getStatusText(status) {
   return STATUS_LABELS[status] || status;
 }
 
-function getRecurrenceLabel(recurrence) {
+function getRecurrenceText(recurrence) {
   return RECURRENCE_LABELS[recurrence] || recurrence;
 }
 
@@ -1282,7 +1525,7 @@ function isCalendarPopoverOpen() {
 
 function renderCalendar() {
   const base = new Date(state.calendar.viewYear, state.calendar.viewMonth, 1);
-  els.calendarMonthLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
+  els.calendarMonthHeading.textContent = new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
     month: "long",
   }).format(base);

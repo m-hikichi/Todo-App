@@ -43,23 +43,23 @@ func (a *todoAPI) handleTodos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *todoAPI) handleLabels(w http.ResponseWriter, r *http.Request) {
+func (a *todoAPI) handleProjects(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		labels, err := a.store.ListLabels(r.Context())
+		projects, err := a.store.ListProjects(r.Context())
 		if err != nil {
 			writeError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, labels)
+		writeJSON(w, http.StatusOK, projects)
 	case http.MethodPost:
-		var input todo.CreateLabelInput
+		var input todo.CreateProjectInput
 		if err := decodeJSON(r, &input); err != nil {
 			writeError(w, err)
 			return
 		}
 
-		created, err := a.store.CreateLabel(r.Context(), input)
+		created, err := a.store.CreateProject(r.Context(), input)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -71,8 +71,8 @@ func (a *todoAPI) handleLabels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *todoAPI) handleLabelByID(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseResourceID(r.URL.Path, "/api/labels/")
+func (a *todoAPI) handleProjectByID(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseResourceID(r.URL.Path, "/api/projects/")
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -80,20 +80,20 @@ func (a *todoAPI) handleLabelByID(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPatch:
-		var input todo.UpdateLabelInput
+		var input todo.UpdateProjectInput
 		if err := decodeJSON(r, &input); err != nil {
 			writeError(w, err)
 			return
 		}
 
-		updated, err := a.store.UpdateLabel(r.Context(), id, input)
+		updated, err := a.store.UpdateProject(r.Context(), id, input)
 		if err != nil {
 			writeError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, updated)
 	case http.MethodDelete:
-		if err := a.store.DeleteLabel(r.Context(), id); err != nil {
+		if err := a.store.DeleteProject(r.Context(), id); err != nil {
 			writeError(w, err)
 			return
 		}
@@ -173,8 +173,8 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, todo.ErrNotFound):
 		http.Error(w, "todo not found", http.StatusNotFound)
-	case errors.Is(err, todo.ErrLabelNotFound):
-		http.Error(w, "label not found", http.StatusNotFound)
+	case errors.Is(err, todo.ErrProjectNotFound):
+		http.Error(w, "project not found", http.StatusNotFound)
 	case todo.IsValidationError(err):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	default:

@@ -40,7 +40,8 @@ type Todo struct {
 	StartDate      string   `json:"start_date"`
 	DueDate        string   `json:"due_date"`
 	Assignee       string   `json:"assignee"`
-	Labels         []string `json:"labels"`
+	ProjectID      *int64   `json:"project_id"`
+	Project        *Project `json:"project,omitempty"`
 	RecurrenceRule string   `json:"recurrence_rule"`
 	ParentTodoID   *int64   `json:"parent_todo_id"`
 	CreatedAt      string   `json:"created_at"`
@@ -48,15 +49,15 @@ type Todo struct {
 }
 
 type CreateInput struct {
-	Title          string   `json:"title"`
-	Description    string   `json:"description"`
-	Status         string   `json:"status"`
-	StartDate      string   `json:"start_date"`
-	DueDate        string   `json:"due_date"`
-	Assignee       string   `json:"assignee"`
-	Labels         []string `json:"labels"`
-	RecurrenceRule string   `json:"recurrence_rule"`
-	ParentTodoID   *int64   `json:"parent_todo_id"`
+	Title          string `json:"title"`
+	Description    string `json:"description"`
+	Status         string `json:"status"`
+	StartDate      string `json:"start_date"`
+	DueDate        string `json:"due_date"`
+	Assignee       string `json:"assignee"`
+	ProjectID      *int64 `json:"project_id"`
+	RecurrenceRule string `json:"recurrence_rule"`
+	ParentTodoID   *int64 `json:"parent_todo_id"`
 }
 
 type OptionalString struct {
@@ -68,20 +69,6 @@ func (o *OptionalString) UnmarshalJSON(data []byte) error {
 	o.Set = true
 	if string(data) == "null" {
 		o.Value = ""
-		return nil
-	}
-	return json.Unmarshal(data, &o.Value)
-}
-
-type OptionalStrings struct {
-	Set   bool
-	Value []string
-}
-
-func (o *OptionalStrings) UnmarshalJSON(data []byte) error {
-	o.Set = true
-	if string(data) == "null" {
-		o.Value = []string{}
 		return nil
 	}
 	return json.Unmarshal(data, &o.Value)
@@ -105,15 +92,15 @@ func (o *OptionalInt64) UnmarshalJSON(data []byte) error {
 }
 
 type UpdateInput struct {
-	Title          OptionalString  `json:"title"`
-	Description    OptionalString  `json:"description"`
-	Status         OptionalString  `json:"status"`
-	StartDate      OptionalString  `json:"start_date"`
-	DueDate        OptionalString  `json:"due_date"`
-	Assignee       OptionalString  `json:"assignee"`
-	Labels         OptionalStrings `json:"labels"`
-	RecurrenceRule OptionalString  `json:"recurrence_rule"`
-	ParentTodoID   OptionalInt64   `json:"parent_todo_id"`
+	Title          OptionalString `json:"title"`
+	Description    OptionalString `json:"description"`
+	Status         OptionalString `json:"status"`
+	StartDate      OptionalString `json:"start_date"`
+	DueDate        OptionalString `json:"due_date"`
+	Assignee       OptionalString `json:"assignee"`
+	ProjectID      OptionalInt64  `json:"project_id"`
+	RecurrenceRule OptionalString `json:"recurrence_rule"`
+	ParentTodoID   OptionalInt64  `json:"parent_todo_id"`
 }
 
 type Store struct {
@@ -162,8 +149,8 @@ func (s *Store) Path() string {
 }
 
 func (s *Store) initSchema(ctx context.Context) error {
-	const schema = `
-CREATE TABLE IF NOT EXISTS labels (
+	const tables = `
+CREATE TABLE IF NOT EXISTS projects (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT NOT NULL COLLATE NOCASE UNIQUE,
 	created_at TEXT NOT NULL,
@@ -177,21 +164,24 @@ CREATE TABLE IF NOT EXISTS todos (
 	start_date TEXT NOT NULL DEFAULT '',
 	due_date TEXT NOT NULL DEFAULT '',
 	assignee TEXT NOT NULL DEFAULT '',
-	labels_json TEXT NOT NULL DEFAULT '[]',
+	project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
 	recurrence_rule TEXT NOT NULL DEFAULT 'none',
 	parent_todo_id INTEGER REFERENCES todos(id) ON DELETE SET NULL,
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_labels_name ON labels(name COLLATE NOCASE);
+`
+	const indexes = `
+CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_todos_created_at ON todos(created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_todos_project_id ON todos(project_id);
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 `
-	if _, err := s.db.ExecContext(ctx, schema); err != nil {
-		return fmt.Errorf("init sqlite schema: %w", err)
+	if _, err := s.db.ExecContext(ctx, tables); err != nil {
+		return fmt.Errorf("init sqlite tables: %w", err)
 	}
-	if err := s.seedLabelsFromTodos(ctx); err != nil {
-		return fmt.Errorf("seed labels from existing todos: %w", err)
+	if _, err := s.db.ExecContext(ctx, indexes); err != nil {
+		return fmt.Errorf("init sqlite indexes: %w", err)
 	}
 	return nil
 }
@@ -203,15 +193,17 @@ func (s *Store) ListTodos(ctx context.Context, status string) ([]Todo, error) {
 	}
 
 	query := `
-SELECT id, title, description, status, start_date, due_date, assignee, labels_json, recurrence_rule, parent_todo_id, created_at, updated_at
-FROM todos
+SELECT t.id, t.title, t.description, t.status, t.start_date, t.due_date, t.assignee, t.project_id, t.recurrence_rule, t.parent_todo_id, t.created_at, t.updated_at,
+       p.id, p.name, p.created_at, p.updated_at
+FROM todos t
+LEFT JOIN projects p ON p.id = t.project_id
 `
 	args := []any{}
 	if status != "" && status != "all" {
-		query += "WHERE status = ? "
+		query += "WHERE t.status = ? "
 		args = append(args, status)
 	}
-	query += "ORDER BY created_at DESC, id DESC"
+	query += "ORDER BY t.created_at DESC, t.id DESC"
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -256,21 +248,14 @@ func (s *Store) CreateTodo(ctx context.Context, input CreateInput) (Todo, error)
 			return Todo{}, err
 		}
 	}
-
-	resolvedLabels, err := s.resolveLabels(ctx, tx, input.Labels)
-	if err != nil {
+	if err := ensureProjectReference(ctx, tx, input.ProjectID); err != nil {
 		return Todo{}, err
-	}
-
-	labelsJSON, err := json.Marshal(resolvedLabels)
-	if err != nil {
-		return Todo{}, fmt.Errorf("encode labels: %w", err)
 	}
 
 	now := s.now().Format(time.RFC3339)
 	result, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO todos (title, description, status, start_date, due_date, assignee, labels_json, recurrence_rule, parent_todo_id, created_at, updated_at)
+		`INSERT INTO todos (title, description, status, start_date, due_date, assignee, project_id, recurrence_rule, parent_todo_id, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		input.Title,
 		input.Description,
@@ -278,7 +263,7 @@ func (s *Store) CreateTodo(ctx context.Context, input CreateInput) (Todo, error)
 		input.StartDate,
 		input.DueDate,
 		input.Assignee,
-		string(labelsJSON),
+		input.ProjectID,
 		input.RecurrenceRule,
 		input.ParentTodoID,
 		now,
@@ -341,8 +326,14 @@ func (s *Store) UpdateTodo(ctx context.Context, id int64, input UpdateInput) (To
 	if input.Assignee.Set {
 		todo.Assignee = strings.TrimSpace(input.Assignee.Value)
 	}
-	if input.Labels.Set {
-		todo.Labels = sanitizeLabels(input.Labels.Value)
+	if input.ProjectID.Set {
+		todo.Project = nil
+		if !input.ProjectID.Valid {
+			todo.ProjectID = nil
+		} else {
+			projectID := input.ProjectID.Value
+			todo.ProjectID = &projectID
+		}
 	}
 	if input.RecurrenceRule.Set {
 		todo.RecurrenceRule = strings.TrimSpace(input.RecurrenceRule.Value)
@@ -359,27 +350,18 @@ func (s *Store) UpdateTodo(ctx context.Context, id int64, input UpdateInput) (To
 	if err := validateTodoValues(todo.Title, todo.Status, todo.RecurrenceRule, todo.StartDate, todo.DueDate); err != nil {
 		return Todo{}, err
 	}
-	if err := validateParentReference(ctx, tx, id, todo.ParentTodoID); err != nil {
+	if err := ensureProjectReference(ctx, tx, todo.ProjectID); err != nil {
 		return Todo{}, err
 	}
-	if input.Labels.Set {
-		resolvedLabels, err := s.resolveLabels(ctx, tx, todo.Labels)
-		if err != nil {
-			return Todo{}, err
-		}
-		todo.Labels = resolvedLabels
-	}
-
-	labelsJSON, err := json.Marshal(sanitizeLabels(todo.Labels))
-	if err != nil {
-		return Todo{}, fmt.Errorf("encode labels: %w", err)
+	if err := validateParentReference(ctx, tx, id, todo.ParentTodoID); err != nil {
+		return Todo{}, err
 	}
 
 	todo.UpdatedAt = s.now().Format(time.RFC3339)
 	_, err = tx.ExecContext(
 		ctx,
 		`UPDATE todos
-		 SET title = ?, description = ?, status = ?, start_date = ?, due_date = ?, assignee = ?, labels_json = ?, recurrence_rule = ?, parent_todo_id = ?, updated_at = ?
+		 SET title = ?, description = ?, status = ?, start_date = ?, due_date = ?, assignee = ?, project_id = ?, recurrence_rule = ?, parent_todo_id = ?, updated_at = ?
 		 WHERE id = ?`,
 		todo.Title,
 		todo.Description,
@@ -387,7 +369,7 @@ func (s *Store) UpdateTodo(ctx context.Context, id int64, input UpdateInput) (To
 		todo.StartDate,
 		todo.DueDate,
 		todo.Assignee,
-		string(labelsJSON),
+		todo.ProjectID,
 		todo.RecurrenceRule,
 		todo.ParentTodoID,
 		todo.UpdatedAt,
@@ -452,33 +434,11 @@ func normalizeCreateInput(input CreateInput) CreateInput {
 	input.StartDate = strings.TrimSpace(input.StartDate)
 	input.DueDate = strings.TrimSpace(input.DueDate)
 	input.Assignee = strings.TrimSpace(input.Assignee)
-	input.Labels = sanitizeLabels(input.Labels)
 	input.RecurrenceRule = strings.TrimSpace(input.RecurrenceRule)
 	if input.RecurrenceRule == "" {
 		input.RecurrenceRule = "none"
 	}
 	return input
-}
-
-func sanitizeLabels(labels []string) []string {
-	if len(labels) == 0 {
-		return []string{}
-	}
-
-	seen := make(map[string]struct{}, len(labels))
-	cleaned := make([]string, 0, len(labels))
-	for _, label := range labels {
-		label = strings.TrimSpace(label)
-		if label == "" {
-			continue
-		}
-		if _, ok := seen[label]; ok {
-			continue
-		}
-		seen[label] = struct{}{}
-		cleaned = append(cleaned, label)
-	}
-	return cleaned
 }
 
 func validateTodoValues(title, status, recurrenceRule, startDate, dueDate string) error {
@@ -615,9 +575,11 @@ func validateParentReference(ctx context.Context, tx *sql.Tx, todoID int64, pare
 func getTodoByID(ctx context.Context, tx *sql.Tx, id int64) (Todo, error) {
 	row := tx.QueryRowContext(
 		ctx,
-		`SELECT id, title, description, status, start_date, due_date, assignee, labels_json, recurrence_rule, parent_todo_id, created_at, updated_at
-		 FROM todos
-		 WHERE id = ?`,
+		`SELECT t.id, t.title, t.description, t.status, t.start_date, t.due_date, t.assignee, t.project_id, t.recurrence_rule, t.parent_todo_id, t.created_at, t.updated_at,
+		        p.id, p.name, p.created_at, p.updated_at
+		 FROM todos t
+		 LEFT JOIN projects p ON p.id = t.project_id
+		 WHERE t.id = ?`,
 		id,
 	)
 
@@ -637,9 +599,13 @@ type scanner interface {
 
 func scanTodo(s scanner) (Todo, error) {
 	var (
-		todo       Todo
-		labelsJSON string
-		parentID   sql.NullInt64
+		todo             Todo
+		projectID        sql.NullInt64
+		parentID         sql.NullInt64
+		projectRowID     sql.NullInt64
+		projectName      sql.NullString
+		projectCreatedAt sql.NullString
+		projectUpdatedAt sql.NullString
 	)
 
 	if err := s.Scan(
@@ -650,27 +616,34 @@ func scanTodo(s scanner) (Todo, error) {
 		&todo.StartDate,
 		&todo.DueDate,
 		&todo.Assignee,
-		&labelsJSON,
+		&projectID,
 		&todo.RecurrenceRule,
 		&parentID,
 		&todo.CreatedAt,
 		&todo.UpdatedAt,
+		&projectRowID,
+		&projectName,
+		&projectCreatedAt,
+		&projectUpdatedAt,
 	); err != nil {
 		return Todo{}, err
 	}
 
-	if labelsJSON == "" {
-		todo.Labels = []string{}
-	} else if err := json.Unmarshal([]byte(labelsJSON), &todo.Labels); err != nil {
-		return Todo{}, fmt.Errorf("decode labels: %w", err)
+	if projectID.Valid {
+		project := projectID.Int64
+		todo.ProjectID = &project
 	}
-
 	if parentID.Valid {
 		parent := parentID.Int64
 		todo.ParentTodoID = &parent
 	}
-	if todo.Labels == nil {
-		todo.Labels = []string{}
+	if projectRowID.Valid {
+		todo.Project = &Project{
+			ID:        projectRowID.Int64,
+			Name:      projectName.String,
+			CreatedAt: projectCreatedAt.String,
+			UpdatedAt: projectUpdatedAt.String,
+		}
 	}
 
 	return todo, nil
