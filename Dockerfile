@@ -2,11 +2,13 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /src
 
-COPY go.mod ./
-RUN go mod download
+RUN apk add --no-cache gcc musl-dev
 
+COPY go.mod ./
 COPY cmd ./cmd
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/todo-server ./cmd/server
+COPY internal ./internal
+RUN go mod tidy
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/todo-server ./cmd/server
 
 FROM alpine:3.20
 
@@ -19,6 +21,9 @@ COPY web /app/web
 
 ENV APP_HOST=0.0.0.0
 ENV APP_PORT=8080
+ENV APP_DATA_DIR=/app/data
+
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
 
 EXPOSE 8080
 

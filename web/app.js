@@ -13,8 +13,6 @@ const state = {
   },
 };
 
-let nextId = 1;
-
 const els = {
   createCollapsible: document.getElementById("todo-create-collapsible"),
   advancedSettings: document.getElementById("todo-advanced-settings"),
@@ -57,28 +55,19 @@ const els = {
   saveNotificationSettings: document.getElementById("save-notification-settings"),
 };
 
-seedInitialData();
 bindEvents();
-render();
+initializeApp();
 
-function seedInitialData() {
-  const now = new Date();
-  const start = addDays(now, 1);
-  const due = addDays(now, 3);
-
-  state.todos.push({
-    id: nextId++,
-    title: "Plan sprint tasks",
-    description: "Break down parent stories into child tasks.",
-    status: "active",
-    startDate: toInputDateTime(start),
-    dueDate: toInputDateTime(due),
-    assignee: "Mika",
-    labels: ["planning", "sprint"],
-    recurrence: "none",
-    parentTodoId: null,
-    createdAt: new Date().toISOString(),
-  });
+async function initializeApp() {
+  render();
+  try {
+    await loadTodos();
+    showValidation("");
+  } catch (error) {
+    console.error(error);
+    showValidation(extractErrorMessage(error, "Todoの読み込みに失敗しました。"));
+  }
+  render();
 }
 
 function bindEvents() {
@@ -186,12 +175,12 @@ function bindEvents() {
     }
   });
 
-  els.form.addEventListener("submit", (event) => {
+  els.form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    createTodo();
+    await createTodo();
   });
 
-  els.todoList.addEventListener("change", (event) => {
+  els.todoList.addEventListener("change", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
     if (!target.classList.contains("status-select")) return;
@@ -199,18 +188,40 @@ function bindEvents() {
     const id = Number(target.dataset.todoId);
     const todo = state.todos.find((item) => item.id === id);
     if (!todo) return;
-    todo.status = target.value;
 
-    if (todo.status === "completed" && todo.recurrence !== "none") {
-      createNextRecurringTodo(todo);
+    const previousStatus = todo.status;
+    const nextStatus = target.value;
+
+    try {
+      const updatedTodo = await patchTodo(id, { status: nextStatus });
+      if (previousStatus !== "completed" && updatedTodo.status === "completed" && updatedTodo.recurrence !== "none") {
+        await createNextRecurringTodo(updatedTodo);
+      }
+      await loadTodos();
+      showValidation("");
+    } catch (error) {
+      console.error(error);
+      target.value = previousStatus;
+      showValidation(extractErrorMessage(error, "Todoの状態更新に失敗しました。"));
     }
+
     render();
   });
 
-  els.todoList.addEventListener("click", (event) => {
+  els.todoList.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-delete-id]");
     if (!button) return;
-    deleteTodo(Number(button.dataset.deleteId));
+
+    try {
+      await deleteTodo(Number(button.dataset.deleteId));
+      await loadTodos();
+      showValidation("");
+    } catch (error) {
+      console.error(error);
+      showValidation(extractErrorMessage(error, "Todoの削除に失敗しました。"));
+    }
+
+    render();
   });
 
   els.saveNotificationSettings.addEventListener("click", () => {
@@ -231,99 +242,203 @@ function bindEvents() {
   });
 }
 
-function createTodo() {
-  const title = (els.title.value || "").trim();
-  const description = (els.description.value || "").trim();
-  const startDateValue = els.startDate.value;
-  const startTimeValue = els.startTime.value;
-  const dueDateValue = els.dueDate.value;
-  const dueTimeValue = els.dueTime.value;
-  const startDate = combineDateAndTime(startDateValue, startTimeValue);
-  const dueDate = combineDateAndTime(dueDateValue, dueTimeValue);
-  const assignee = (els.assignee.value || "").trim();
+async function loadTodos() {
+  const todos = await requestJSON("/api/todos");
+  state.todos = Array.isArray(todos) ? todos.map(fromApiTodo) : [];
+}
+
+async function createTodo() {
+  const todo = buildTodoFromForm();
+
+  if (!todo.title) {
+    showValidation("Title is required.");
+    return;
+  }
+  if (todo.title.length > 120) {
+    showValidation("Title must be 120 characters or fewer.");
+    return;
+  }
+  if (els.startTime.value && !els.startDate.value) {
+    showValidation("Start date is required when start time is set.");
+    return;
+  }
+  if (els.dueTime.value && !els.dueDate.value) {
+    showValidation("Due date is required when due time is set.");
+    return;
+  }
+  if (!isValidStartDue(todo.startDate, todo.dueDate)) {
+    showValidation("Due date must be on or after start date.");
+    return;
+  }
+
+  try {
+    await requestJSON("/api/todos", {
+      method: "POST",
+      body: JSON.stringify(toApiTodoPayload(todo)),
+    });
+    clearForm();
+    showValidation("");
+    await loadTodos();
+  } catch (error) {
+    console.error(error);
+    showValidation(extractErrorMessage(error, "Todoの保存に失敗しました。"));
+  }
+
+  render();
+}
+
+function buildTodoFromForm() {
   const labels = (els.labels.value || "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const recurrence = els.recurrence.value || "none";
-  const parentTodoId = els.parent.value ? Number(els.parent.value) : null;
 
-  if (!title) {
-    showValidation("Title is required.");
-    return;
-  }
-  if (title.length > 120) {
-    showValidation("Title must be 120 characters or fewer.");
-    return;
-  }
-  if (startTimeValue && !startDateValue) {
-    showValidation("Start date is required when start time is set.");
-    return;
-  }
-  if (dueTimeValue && !dueDateValue) {
-    showValidation("Due date is required when due time is set.");
-    return;
-  }
-  if (!isValidStartDue(startDate, dueDate)) {
-    showValidation("Due date must be on or after start date.");
-    return;
-  }
-  if (parentTodoId && parentTodoId === nextId) {
-    showValidation("Parent task cannot be self.");
-    return;
-  }
-
-  state.todos.unshift({
-    id: nextId++,
-    title,
-    description,
+  return {
+    title: (els.title.value || "").trim(),
+    description: (els.description.value || "").trim(),
     status: "active",
-    startDate,
-    dueDate,
-    assignee,
+    startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
+    dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
+    assignee: (els.assignee.value || "").trim(),
     labels,
-    recurrence,
-    parentTodoId,
-    createdAt: new Date().toISOString(),
+    recurrence: els.recurrence.value || "none",
+    parentTodoId: els.parent.value ? Number(els.parent.value) : null,
+  };
+}
+
+async function patchTodo(id, changes) {
+  const payload = {};
+  if (Object.hasOwn(changes, "title")) payload.title = changes.title;
+  if (Object.hasOwn(changes, "description")) payload.description = changes.description;
+  if (Object.hasOwn(changes, "status")) payload.status = changes.status;
+  if (Object.hasOwn(changes, "startDate")) payload.start_date = changes.startDate;
+  if (Object.hasOwn(changes, "dueDate")) payload.due_date = changes.dueDate;
+  if (Object.hasOwn(changes, "assignee")) payload.assignee = changes.assignee;
+  if (Object.hasOwn(changes, "labels")) payload.labels = changes.labels;
+  if (Object.hasOwn(changes, "recurrence")) payload.recurrence_rule = changes.recurrence;
+  if (Object.hasOwn(changes, "parentTodoId")) payload.parent_todo_id = changes.parentTodoId;
+
+  const updated = await requestJSON(`/api/todos/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
-
-  clearForm();
-  showValidation("");
-  render();
+  return fromApiTodo(updated);
 }
 
-function deleteTodo(id) {
-  state.todos = state.todos.filter((item) => item.id !== id);
-  for (const todo of state.todos) {
-    if (todo.parentTodoId === id) {
-      todo.parentTodoId = null;
-    }
-  }
-  render();
+async function deleteTodo(id) {
+  await requestJSON(`/api/todos/${id}`, {
+    method: "DELETE",
+  });
 }
 
-function createNextRecurringTodo(todo) {
+async function createNextRecurringTodo(todo) {
   if (!todo.dueDate) return;
+
   const baseDate = parseDateTime(todo.dueDate, "due");
   if (Number.isNaN(baseDate.getTime())) return;
 
-  const next = new Date(baseDate);
-  if (todo.recurrence === "daily") next.setDate(next.getDate() + 1);
-  if (todo.recurrence === "weekly") next.setDate(next.getDate() + 7);
-  if (todo.recurrence === "monthly") next.setMonth(next.getMonth() + 1);
+  const nextDue = new Date(baseDate);
+  if (todo.recurrence === "daily") nextDue.setDate(nextDue.getDate() + 1);
+  if (todo.recurrence === "weekly") nextDue.setDate(nextDue.getDate() + 7);
+  if (todo.recurrence === "monthly") nextDue.setMonth(nextDue.getMonth() + 1);
 
-  state.todos.unshift({
-    ...todo,
-    id: nextId++,
-    status: "active",
-    startDate: todo.startDate
-      ? hasTimePart(todo.startDate)
-        ? toInputDateTime(next)
-        : toInputDate(next)
-      : "",
-    dueDate: hasTimePart(todo.dueDate) ? toInputDateTime(next) : toInputDate(next),
-    createdAt: new Date().toISOString(),
+  let nextStartDate = "";
+  if (todo.startDate) {
+    const baseStart = parseDateTime(todo.startDate, "start");
+    if (!Number.isNaN(baseStart.getTime())) {
+      const shiftedStart = new Date(baseStart);
+      if (todo.recurrence === "daily") shiftedStart.setDate(shiftedStart.getDate() + 1);
+      if (todo.recurrence === "weekly") shiftedStart.setDate(shiftedStart.getDate() + 7);
+      if (todo.recurrence === "monthly") shiftedStart.setMonth(shiftedStart.getMonth() + 1);
+      nextStartDate = hasTimePart(todo.startDate) ? toInputDateTime(shiftedStart) : toInputDate(shiftedStart);
+    }
+  }
+
+  await requestJSON("/api/todos", {
+    method: "POST",
+    body: JSON.stringify(
+      toApiTodoPayload({
+        title: todo.title,
+        description: todo.description,
+        status: "active",
+        startDate: nextStartDate,
+        dueDate: hasTimePart(todo.dueDate) ? toInputDateTime(nextDue) : toInputDate(nextDue),
+        assignee: todo.assignee,
+        labels: todo.labels,
+        recurrence: todo.recurrence,
+        parentTodoId: todo.parentTodoId,
+      }),
+    ),
   });
+}
+
+async function requestJSON(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  const data = text ? tryParseJSON(text) : null;
+  if (!response.ok) {
+    const message = typeof data === "string" ? data : data && data.message ? data.message : text;
+    throw new Error(message || `Request failed with status ${response.status}`);
+  }
+
+  return data;
+}
+
+function tryParseJSON(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function extractErrorMessage(error, fallback) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}
+
+function fromApiTodo(todo) {
+  return {
+    id: todo.id,
+    title: todo.title || "",
+    description: todo.description || "",
+    status: todo.status || "active",
+    startDate: todo.start_date || "",
+    dueDate: todo.due_date || "",
+    assignee: todo.assignee || "",
+    labels: Array.isArray(todo.labels) ? todo.labels : [],
+    recurrence: todo.recurrence_rule || "none",
+    parentTodoId: todo.parent_todo_id ?? null,
+    createdAt: todo.created_at || "",
+    updatedAt: todo.updated_at || "",
+  };
+}
+
+function toApiTodoPayload(todo) {
+  return {
+    title: todo.title,
+    description: todo.description,
+    status: todo.status,
+    start_date: todo.startDate || "",
+    due_date: todo.dueDate || "",
+    assignee: todo.assignee || "",
+    labels: Array.isArray(todo.labels) ? todo.labels : [],
+    recurrence_rule: todo.recurrence || "none",
+    parent_todo_id: todo.parentTodoId,
+  };
 }
 
 function render() {
@@ -348,9 +463,11 @@ function renderParentOptions() {
     els.parent.appendChild(option);
   }
 
-  if (currentValue) {
+  if (currentValue && state.todos.some((todo) => String(todo.id) === currentValue)) {
     els.parent.value = currentValue;
+    return;
   }
+  els.parent.value = "";
 }
 
 function renderTodoList() {
@@ -470,12 +587,13 @@ function clearForm() {
   els.form.reset();
   els.startDate.value = "";
   els.dueDate.value = "";
+  els.parent.value = "";
+  els.recurrence.value = "none";
   if (els.advancedSettings.open) {
     els.advancedSettings.open = false;
   }
   syncDateDisplays();
   closeCalendarPopover();
-  els.recurrence.value = "none";
 }
 
 function isValidStartDue(startDate, dueDate) {
@@ -666,17 +784,12 @@ function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
 function parseDateTime(value, kind) {
   if (!value) return new Date(NaN);
-  if (value.includes("T")) return new Date(value);
+  if (value.endsWith("Z") || /[+-]\d\d:\d\d$/.test(value)) return new Date(value);
+  if (value.includes("T")) return new Date(`${value}:00+09:00`);
   const fallbackTime = kind === "due" ? "23:59:59" : "00:00:00";
-  return new Date(`${value}T${fallbackTime}`);
+  return new Date(`${value}T${fallbackTime}+09:00`);
 }
 
 function toInputDate(date) {
