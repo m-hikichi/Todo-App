@@ -1,5 +1,6 @@
 const state = {
   todos: [],
+  editingTodoId: null,
   notifications: [],
   calendar: {
     target: null,
@@ -17,6 +18,7 @@ const els = {
   createCollapsible: document.getElementById("todo-create-collapsible"),
   advancedSettings: document.getElementById("todo-advanced-settings"),
   form: document.getElementById("todo-form"),
+  formHeading: document.getElementById("todo-form-heading"),
   title: document.getElementById("todo-title"),
   description: document.getElementById("todo-description"),
   startDate: document.getElementById("todo-start-date"),
@@ -31,6 +33,8 @@ const els = {
   labels: document.getElementById("todo-labels"),
   recurrence: document.getElementById("todo-recurrence"),
   parent: document.getElementById("todo-parent"),
+  cancelEditButton: document.getElementById("todo-cancel-edit"),
+  submitButton: document.getElementById("todo-submit-button"),
   validation: document.getElementById("validation-message"),
   settingsButton: document.getElementById("settings-button"),
   notificationButton: document.getElementById("notification-button"),
@@ -177,7 +181,11 @@ function bindEvents() {
 
   els.form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await createTodo();
+    await submitTodoForm();
+  });
+
+  els.cancelEditButton.addEventListener("click", () => {
+    cancelEditing();
   });
 
   els.todoList.addEventListener("change", async (event) => {
@@ -209,11 +217,20 @@ function bindEvents() {
   });
 
   els.todoList.addEventListener("click", async (event) => {
-    const button = event.target.closest("button[data-delete-id]");
-    if (!button) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const editButton = target.closest("button[data-edit-id]");
+    if (editButton) {
+      beginEditing(Number(editButton.dataset.editId));
+      return;
+    }
+
+    const deleteButton = target.closest("button[data-delete-id]");
+    if (!deleteButton) return;
 
     try {
-      await deleteTodo(Number(button.dataset.deleteId));
+      await deleteTodo(Number(deleteButton.dataset.deleteId));
       await loadTodos();
       showValidation("");
     } catch (error) {
@@ -245,36 +262,34 @@ function bindEvents() {
 async function loadTodos() {
   const todos = await requestJSON("/api/todos");
   state.todos = Array.isArray(todos) ? todos.map(fromApiTodo) : [];
+  syncEditingState();
+}
+
+async function submitTodoForm() {
+  if (isEditingTodo()) {
+    await updateTodo(state.editingTodoId);
+    return;
+  }
+  await createTodo();
 }
 
 async function createTodo() {
   const todo = buildTodoFromForm();
-
-  if (!todo.title) {
-    showValidation("Title is required.");
-    return;
-  }
-  if (todo.title.length > 120) {
-    showValidation("Title must be 120 characters or fewer.");
-    return;
-  }
-  if (els.startTime.value && !els.startDate.value) {
-    showValidation("Start date is required when start time is set.");
-    return;
-  }
-  if (els.dueTime.value && !els.dueDate.value) {
-    showValidation("Due date is required when due time is set.");
-    return;
-  }
-  if (!isValidStartDue(todo.startDate, todo.dueDate)) {
-    showValidation("Due date must be on or after start date.");
+  const validationMessage = validateTodoInput(todo);
+  if (validationMessage) {
+    showValidation(validationMessage);
     return;
   }
 
   try {
     await requestJSON("/api/todos", {
       method: "POST",
-      body: JSON.stringify(toApiTodoPayload(todo)),
+      body: JSON.stringify(
+        toApiTodoPayload({
+          ...todo,
+          status: "active",
+        }),
+      ),
     });
     clearForm();
     showValidation("");
@@ -296,7 +311,6 @@ function buildTodoFromForm() {
   return {
     title: (els.title.value || "").trim(),
     description: (els.description.value || "").trim(),
-    status: "active",
     startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
     dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
     assignee: (els.assignee.value || "").trim(),
@@ -304,6 +318,45 @@ function buildTodoFromForm() {
     recurrence: els.recurrence.value || "none",
     parentTodoId: els.parent.value ? Number(els.parent.value) : null,
   };
+}
+
+async function updateTodo(id) {
+  const todo = buildTodoFromForm();
+  const validationMessage = validateTodoInput(todo);
+  if (validationMessage) {
+    showValidation(validationMessage);
+    return;
+  }
+
+  try {
+    await patchTodo(id, {
+      title: todo.title,
+      description: todo.description,
+      startDate: todo.startDate,
+      dueDate: todo.dueDate,
+      assignee: todo.assignee,
+      labels: todo.labels,
+      recurrence: todo.recurrence,
+      parentTodoId: todo.parentTodoId,
+    });
+    await loadTodos();
+    cancelEditing({ clearValidation: false });
+    showValidation("");
+  } catch (error) {
+    console.error(error);
+    showValidation(extractErrorMessage(error, "Todoの更新に失敗しました。"));
+  }
+
+  render();
+}
+
+function validateTodoInput(todo) {
+  if (!todo.title) return "Title is required.";
+  if (todo.title.length > 120) return "Title must be 120 characters or fewer.";
+  if (els.startTime.value && !els.startDate.value) return "Start date is required when start time is set.";
+  if (els.dueTime.value && !els.dueDate.value) return "Due date is required when due time is set.";
+  if (!isValidStartDue(todo.startDate, todo.dueDate)) return "Due date must be on or after start date.";
+  return "";
 }
 
 async function patchTodo(id, changes) {
@@ -442,6 +495,7 @@ function toApiTodoPayload(todo) {
 }
 
 function render() {
+  updateFormMode();
   syncDateDisplays();
   renderParentOptions();
   renderTodoList();
@@ -450,20 +504,21 @@ function render() {
 
 function renderParentOptions() {
   const currentValue = els.parent.value;
+  const availableTodos = state.todos.filter((todo) => todo.id !== state.editingTodoId);
   els.parent.innerHTML = `
     <md-select-option value="">
       <div slot="headline">なし</div>
     </md-select-option>
   `;
 
-  for (const todo of state.todos) {
+  for (const todo of availableTodos) {
     const option = document.createElement("md-select-option");
     option.value = String(todo.id);
     option.innerHTML = `<div slot="headline">#${todo.id} ${escapeHtml(todo.title)}</div>`;
     els.parent.appendChild(option);
   }
 
-  if (currentValue && state.todos.some((todo) => String(todo.id) === currentValue)) {
+  if (currentValue && availableTodos.some((todo) => String(todo.id) === currentValue)) {
     els.parent.value = currentValue;
     return;
   }
@@ -484,8 +539,9 @@ function renderTodoList() {
     .map((todo) => {
       const labels = todo.labels.map((label) => `<span class="meta-chip">#${escapeHtml(label)}</span>`).join("");
       const parent = todo.parentTodoId ? `<span class="meta-chip">parent: #${todo.parentTodoId}</span>` : "";
+      const isEditing = todo.id === state.editingTodoId;
       return `
-        <article class="todo-card">
+        <article class="todo-card${isEditing ? " is-editing" : ""}">
           <div class="todo-top">
             <div>
               <h3 class="todo-title">${escapeHtml(todo.title)}</h3>
@@ -505,6 +561,9 @@ function renderTodoList() {
             <select class="status-select" data-todo-id="${todo.id}">
               ${renderStatusOptions(todo.status)}
             </select>
+            <button class="secondary-btn" data-edit-id="${todo.id}" ${isEditing ? "disabled" : ""}>
+              ${isEditing ? "編集中" : "編集"}
+            </button>
             <button class="danger-btn" data-delete-id="${todo.id}">削除</button>
           </div>
         </article>
@@ -585,8 +644,14 @@ function showValidation(message) {
 
 function clearForm() {
   els.form.reset();
+  els.title.value = "";
+  els.description.value = "";
   els.startDate.value = "";
+  els.startTime.value = "";
   els.dueDate.value = "";
+  els.dueTime.value = "";
+  els.assignee.value = "";
+  els.labels.value = "";
   els.parent.value = "";
   els.recurrence.value = "none";
   if (els.advancedSettings.open) {
@@ -594,6 +659,87 @@ function clearForm() {
   }
   syncDateDisplays();
   closeCalendarPopover();
+}
+
+function beginEditing(todoId) {
+  const todo = state.todos.find((item) => item.id === todoId);
+  if (!todo) {
+    showValidation("編集対象のTodoが見つかりません。");
+    return;
+  }
+
+  state.editingTodoId = todo.id;
+  els.createCollapsible.open = true;
+  populateForm(todo);
+  showValidation("");
+  render();
+}
+
+function cancelEditing({ clearValidation = true } = {}) {
+  state.editingTodoId = null;
+  clearForm();
+  if (clearValidation) {
+    showValidation("");
+  }
+  render();
+}
+
+function syncEditingState() {
+  if (!isEditingTodo()) return;
+  if (state.todos.some((todo) => todo.id === state.editingTodoId)) return;
+  cancelEditing({ clearValidation: false });
+}
+
+function updateFormMode() {
+  const editing = isEditingTodo();
+  els.formHeading.textContent = editing ? "Todo編集" : "Todo作成";
+  els.submitButton.textContent = editing ? "保存" : "追加";
+  els.cancelEditButton.hidden = !editing;
+}
+
+function populateForm(todo) {
+  els.title.value = todo.title;
+  els.description.value = todo.description;
+  applyStoredDateTime("start", todo.startDate);
+  applyStoredDateTime("due", todo.dueDate);
+  els.assignee.value = todo.assignee;
+  els.labels.value = todo.labels.join(", ");
+  els.recurrence.value = todo.recurrence || "none";
+  renderParentOptions();
+  els.parent.value = todo.parentTodoId === null ? "" : String(todo.parentTodoId);
+  els.advancedSettings.open = shouldOpenAdvancedSettings(todo);
+  syncDateDisplays();
+  closeCalendarPopover();
+}
+
+function applyStoredDateTime(target, value) {
+  const isStart = target === "start";
+  const dateField = isStart ? els.startDate : els.dueDate;
+  const timeField = isStart ? els.startTime : els.dueTime;
+
+  if (!value) {
+    dateField.value = "";
+    timeField.value = "";
+    return;
+  }
+
+  const [datePart, rawTimePart = ""] = String(value).split("T");
+  dateField.value = datePart;
+  timeField.value = rawTimePart.slice(0, 5);
+}
+
+function shouldOpenAdvancedSettings(todo) {
+  return Boolean(
+    todo.startDate ||
+      todo.assignee ||
+      todo.labels.length > 0 ||
+      todo.recurrence !== "none" ||
+      todo.parentTodoId,
+  );
+}
+
+function isEditingTodo() {
+  return Number.isInteger(state.editingTodoId);
 }
 
 function isValidStartDue(startDate, dueDate) {

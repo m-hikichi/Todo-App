@@ -124,6 +124,91 @@ func TestUpdateTodoPersistsStatus(t *testing.T) {
 	}
 }
 
+func TestUpdateTodoPersistsEditableFields(t *testing.T) {
+	ctx := context.Background()
+	dataDir := t.TempDir()
+
+	store := openTestStore(t, dataDir)
+	parent, err := store.CreateTodo(ctx, CreateInput{Title: "Parent", Status: "active"})
+	if err != nil {
+		t.Fatalf("CreateTodo parent failed: %v", err)
+	}
+	created, err := store.CreateTodo(ctx, CreateInput{
+		Title:       "Draft title",
+		Description: "Draft description",
+		Status:      "active",
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo failed: %v", err)
+	}
+
+	updated, err := store.UpdateTodo(ctx, created.ID, UpdateInput{
+		Title:          OptionalString{Set: true, Value: "Edited title"},
+		Description:    OptionalString{Set: true, Value: "Edited description"},
+		StartDate:      OptionalString{Set: true, Value: "2026-03-18T08:30"},
+		DueDate:        OptionalString{Set: true, Value: "2026-03-19"},
+		Assignee:       OptionalString{Set: true, Value: "Jun"},
+		Labels:         OptionalStrings{Set: true, Value: []string{"work", "priority-high"}},
+		RecurrenceRule: OptionalString{Set: true, Value: "monthly"},
+		ParentTodoID:   OptionalInt64{Set: true, Valid: true, Value: parent.ID},
+	})
+	if err != nil {
+		t.Fatalf("UpdateTodo failed: %v", err)
+	}
+	if updated.Title != "Edited title" || updated.Description != "Edited description" {
+		t.Fatalf("unexpected updated title/description: %#v", updated)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	reopened := openTestStore(t, dataDir)
+	t.Cleanup(func() { _ = reopened.Close() })
+
+	todos, err := reopened.ListTodos(ctx, "all")
+	if err != nil {
+		t.Fatalf("ListTodos failed: %v", err)
+	}
+	if len(todos) != 2 {
+		t.Fatalf("expected 2 todos, got %d", len(todos))
+	}
+
+	var edited Todo
+	for _, todo := range todos {
+		if todo.ID == created.ID {
+			edited = todo
+			break
+		}
+	}
+	if edited.ID == 0 {
+		t.Fatal("edited todo not found after reopen")
+	}
+	if edited.Title != "Edited title" {
+		t.Fatalf("expected edited title, got %q", edited.Title)
+	}
+	if edited.Description != "Edited description" {
+		t.Fatalf("expected edited description, got %q", edited.Description)
+	}
+	if edited.StartDate != "2026-03-18T08:30" {
+		t.Fatalf("expected edited start date, got %q", edited.StartDate)
+	}
+	if edited.DueDate != "2026-03-19" {
+		t.Fatalf("expected edited due date, got %q", edited.DueDate)
+	}
+	if edited.Assignee != "Jun" {
+		t.Fatalf("expected edited assignee, got %q", edited.Assignee)
+	}
+	if len(edited.Labels) != 2 || edited.Labels[0] != "work" || edited.Labels[1] != "priority-high" {
+		t.Fatalf("unexpected edited labels: %#v", edited.Labels)
+	}
+	if edited.RecurrenceRule != "monthly" {
+		t.Fatalf("expected edited recurrence, got %q", edited.RecurrenceRule)
+	}
+	if edited.ParentTodoID == nil || *edited.ParentTodoID != parent.ID {
+		t.Fatalf("expected edited parent id %d, got %v", parent.ID, edited.ParentTodoID)
+	}
+}
+
 func TestUpdateTodoRejectsParentCycles(t *testing.T) {
 	ctx := context.Background()
 	store := openTestStore(t, t.TempDir())

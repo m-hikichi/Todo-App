@@ -46,7 +46,7 @@
       <section class="panel form-panel">
         <details id="todo-create-collapsible" class="create-collapsible">
           <summary class="create-summary">
-            <span>Todo作成</span>
+            <span id="todo-form-heading">Todo作成</span>
             <span class="material-symbols-outlined create-summary-icon">expand_more</span>
           </summary>
           <form id="todo-form" class="todo-form">
@@ -169,7 +169,10 @@
 
             <div class="form-actions">
               <p class="validation-message" id="validation-message"></p>
-              <md-filled-button type="submit">追加</md-filled-button>
+              <div class="form-action-buttons">
+                <md-text-button id="todo-cancel-edit" type="button" hidden>キャンセル</md-text-button>
+                <md-filled-button id="todo-submit-button" type="submit">追加</md-filled-button>
+              </div>
             </div>
 
             <section id="calendar-popover" class="calendar-popover hidden" role="dialog" aria-label="日付選択">
