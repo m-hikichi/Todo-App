@@ -10,10 +10,10 @@
 |--------|--------|------------|--------------|------------|----------------|-----------|
 | FC-01-01-001 | SPEC-001 | FR-001 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodos, CreateTodo, createTodo | internal/todo/store_test.go | ✅ |
 | FC-01-01-002 | SPEC-001 | FR-002 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodoByID, UpdateTodo, submitTodoForm, updateTodo, beginEditing | internal/todo/store_test.go, 手動確認（一覧の編集ボタンから保存） | ✅ |
-| FC-01-01-003 | SPEC-001 | FR-003 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodoByID, DeleteTodo, deleteTodo | internal/todo/store_test.go | ✅ |
+| FC-01-01-003 | SPEC-001 | FR-003 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodoByID, DeleteTodo, deleteTodo, promptDeleteTodo, confirmDeleteTodo | internal/todo/store_test.go, 手動確認（削除確認ダイアログの表示とキャンセル） | ✅ |
 | FC-01-01-001 | SPEC-001 | FR-004 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodos, CreateTodo, createTodo | internal/todo/store_test.go | ✅ |
 | FC-01-02-001 | SPEC-001 | FR-005 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodos, ListTodos, loadTodos, renderTodoList | internal/todo/store_test.go | ✅ |
-| FC-01-03-001 | SPEC-001 | FR-006 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodoByID, UpdateTodo, patchTodo, renderStatusOptions | internal/todo/store_test.go | ✅ |
+| FC-01-03-001 | SPEC-001 | FR-006 | cmd/server/api.go, internal/todo/store.go, web/app.js, web/styles.css | handleTodoByID, UpdateTodo, patchTodo, setTodoStatus, renderStatusButtons, getStatusLabel | internal/todo/store_test.go, 手動確認（状態ボタンの1クリック変更） | ✅ |
 | FC-01-03-002 | SPEC-001 | FR-007 | cmd/server/api.go, internal/todo/store.go | handleTodos, ListTodos | 手動確認（GET /api/todos?status=active） | 🔧 |
 | FC-01-02-002 | SPEC-001 | FR-008 | TBD | TBD | TBD | ❌ |
 | FC-02-01-002 | SPEC-001 | FR-009 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodos, handleTodoByID, CreateTodo, UpdateTodo, validateTodoValues, applyStoredDateTime, combineDateAndTime | internal/todo/store_test.go, 手動確認（作成/編集フォームで開始予定日を更新） | ✅ |
@@ -23,7 +23,7 @@
 | FC-02-03-002 | SPEC-001 | FR-021 | cmd/server/api.go, cmd/server/main.go, internal/todo/labels.go, web/index.html, web/app.js | handleLabels, handleLabelByID, CreateLabel, UpdateLabel, DeleteLabel, ListLabels, seedLabelsFromTodos, loadLabels, submitLabelEditor, deleteLabel, renderLabelManagementList | internal/todo/store_test.go, 手動確認（ヘッダーのラベル管理ダイアログ） | ✅ |
 | FC-03-01-001 | SPEC-001 | FR-013 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodos, handleTodoByID, CreateTodo, UpdateTodo, validateParentReference, renderParentOptions, updateTodo, renderTodoList | internal/todo/store_test.go, 手動確認（親指定の作成/編集と一覧表示） | ✅ |
 | FC-03-01-002 | SPEC-001 | FR-014 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodoByID, UpdateTodo, DeleteTodo, validateParentReference, renderParentOptions, deleteTodo | internal/todo/store_test.go | ✅ |
-| FC-05-01-001 | SPEC-001 | FR-015 | web/index.html, web/app.js | submitTodoForm, createTodo, updateTodo, deleteTodo, patchTodo, loadTodos, render | 手動確認（作成/編集/削除/状態変更が即時反映） | ✅ |
+| FC-05-01-001 | SPEC-001 | FR-015 | web/index.html, web/app.js, web/styles.css | submitTodoForm, createTodo, updateTodo, clearForm, deleteTodo, patchTodo, loadTodos, render, updateFormMode, cancelEditing, syncCreateSummary, buildFormPreview | 手動確認（作成入口の補助文・入力途中サマリ・モード別ボタン文言・キャンセル時の折りたたみ・追加成功後のフォーム維持・更新成功後の折りたたみ・作成/編集/削除/状態変更の即時反映） | ✅ |
 | FC-04-02-002 | SPEC-001 | FR-016 | TBD | TBD | TBD | ❌ |
 | FC-04-06-001 | SPEC-001 | FR-017 | TBD | TBD | TBD | ❌ |
 | FC-05-02-001 | SPEC-001 | FR-018 | web/index.html, web/app.js, web/styles.css | renderNotifications, updateNotificationBadge, bindEvents | 手動確認（通知設定反映・ベル押下でポップオーバー表示） | ✅ |

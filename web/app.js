@@ -1,6 +1,7 @@
 const state = {
   todos: [],
   editingTodoId: null,
+  pendingDeleteTodoId: null,
   editingLabelId: null,
   availableLabels: [],
   selectedLabels: [],
@@ -17,11 +18,30 @@ const state = {
   },
 };
 
+const STATUS_ORDER = ["active", "in_progress", "waiting", "completed"];
+
+const STATUS_LABELS = {
+  active: "未着手",
+  in_progress: "進行中",
+  waiting: "保留",
+  completed: "完了",
+};
+
+const RECURRENCE_LABELS = {
+  none: "なし",
+  daily: "毎日",
+  weekly: "毎週",
+  monthly: "毎月",
+};
+
 const els = {
   createCollapsible: document.getElementById("todo-create-collapsible"),
   advancedSettings: document.getElementById("todo-advanced-settings"),
   form: document.getElementById("todo-form"),
   formHeading: document.getElementById("todo-form-heading"),
+  formSummaryText: document.getElementById("todo-form-summary-text"),
+  formBadge: document.getElementById("todo-form-badge"),
+  formPreview: document.getElementById("todo-form-preview"),
   title: document.getElementById("todo-title"),
   description: document.getElementById("todo-description"),
   startDate: document.getElementById("todo-start-date"),
@@ -67,6 +87,10 @@ const els = {
   notificationEnabled: document.getElementById("notification-enabled"),
   closeNotificationSettings: document.getElementById("close-notification-settings"),
   saveNotificationSettings: document.getElementById("save-notification-settings"),
+  deleteConfirmDialog: document.getElementById("delete-confirm-dialog"),
+  deleteConfirmMessage: document.getElementById("delete-confirm-message"),
+  cancelDeleteButton: document.getElementById("cancel-delete-button"),
+  confirmDeleteButton: document.getElementById("confirm-delete-button"),
 };
 
 bindEvents();
@@ -89,12 +113,15 @@ function bindEvents() {
     if (!els.createCollapsible.open) {
       closeCalendarPopover();
     }
+    updateFormMode();
+    syncCreateSummary();
   });
 
   els.advancedSettings.addEventListener("toggle", () => {
     if (!els.advancedSettings.open) {
       closeCalendarPopover();
     }
+    syncCreateSummary();
   });
 
   els.settingsButton.addEventListener("click", () => {
@@ -214,8 +241,16 @@ function bindEvents() {
     await submitTodoForm();
   });
 
+  els.form.addEventListener("input", () => {
+    syncCreateSummary();
+  });
+
+  els.form.addEventListener("change", () => {
+    syncCreateSummary();
+  });
+
   els.cancelEditButton.addEventListener("click", () => {
-    cancelEditing();
+    cancelEditing({ collapse: true });
   });
 
   els.saveLabelButton.addEventListener("click", async () => {
@@ -254,37 +289,18 @@ function bindEvents() {
     }
   });
 
-  els.todoList.addEventListener("change", async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement)) return;
-    if (!target.classList.contains("status-select")) return;
-
-    const id = Number(target.dataset.todoId);
-    const todo = state.todos.find((item) => item.id === id);
-    if (!todo) return;
-
-    const previousStatus = todo.status;
-    const nextStatus = target.value;
-
-    try {
-      const updatedTodo = await patchTodo(id, { status: nextStatus });
-      if (previousStatus !== "completed" && updatedTodo.status === "completed" && updatedTodo.recurrence !== "none") {
-        await createNextRecurringTodo(updatedTodo);
-      }
-      await loadTodos();
-      showValidation("");
-    } catch (error) {
-      console.error(error);
-      target.value = previousStatus;
-      showValidation(extractErrorMessage(error, "Todoの状態更新に失敗しました。"));
-    }
-
-    render();
-  });
-
   els.todoList.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const statusButton = target.closest("button[data-status-id][data-next-status]");
+    if (statusButton) {
+      await setTodoStatus(
+        Number(statusButton.dataset.statusId),
+        String(statusButton.dataset.nextStatus || ""),
+      );
+      return;
+    }
 
     const editButton = target.closest("button[data-edit-id]");
     if (editButton) {
@@ -294,17 +310,19 @@ function bindEvents() {
 
     const deleteButton = target.closest("button[data-delete-id]");
     if (!deleteButton) return;
+    promptDeleteTodo(Number(deleteButton.dataset.deleteId));
+  });
 
-    try {
-      await deleteTodo(Number(deleteButton.dataset.deleteId));
-      await loadTodos();
-      showValidation("");
-    } catch (error) {
-      console.error(error);
-      showValidation(extractErrorMessage(error, "Todoの削除に失敗しました。"));
-    }
+  els.deleteConfirmDialog.addEventListener("close", () => {
+    state.pendingDeleteTodoId = null;
+  });
 
-    render();
+  els.cancelDeleteButton.addEventListener("click", () => {
+    closeDialog(els.deleteConfirmDialog);
+  });
+
+  els.confirmDeleteButton.addEventListener("click", async () => {
+    await confirmDeleteTodo();
   });
 
   els.saveNotificationSettings.addEventListener("click", () => {
@@ -364,7 +382,7 @@ async function createTodo() {
         }),
       ),
     });
-    clearForm();
+    clearForm({ preserveAdvancedState: true });
     showValidation("");
     await loadTodos();
   } catch (error) {
@@ -408,7 +426,7 @@ async function updateTodo(id) {
       parentTodoId: todo.parentTodoId,
     });
     await loadTodos();
-    cancelEditing({ clearValidation: false });
+    cancelEditing({ clearValidation: false, collapse: true });
     showValidation("");
   } catch (error) {
     console.error(error);
@@ -419,11 +437,11 @@ async function updateTodo(id) {
 }
 
 function validateTodoInput(todo) {
-  if (!todo.title) return "Title is required.";
-  if (todo.title.length > 120) return "Title must be 120 characters or fewer.";
-  if (els.startTime.value && !els.startDate.value) return "Start date is required when start time is set.";
-  if (els.dueTime.value && !els.dueDate.value) return "Due date is required when due time is set.";
-  if (!isValidStartDue(todo.startDate, todo.dueDate)) return "Due date must be on or after start date.";
+  if (!todo.title) return "タイトルは必須です。";
+  if (todo.title.length > 120) return "タイトルは120文字以内で入力してください。";
+  if (els.startTime.value && !els.startDate.value) return "開始時刻を設定する場合は開始予定日も入力してください。";
+  if (els.dueTime.value && !els.dueDate.value) return "締切時刻を設定する場合は締切日も入力してください。";
+  if (!isValidStartDue(todo.startDate, todo.dueDate)) return "締切日は開始予定日以降の日付にしてください。";
   return "";
 }
 
@@ -450,6 +468,59 @@ async function deleteTodo(id) {
   await requestJSON(`/api/todos/${id}`, {
     method: "DELETE",
   });
+}
+
+async function setTodoStatus(id, nextStatus) {
+  const todo = state.todos.find((item) => item.id === id);
+  if (!todo || !STATUS_ORDER.includes(nextStatus) || todo.status === nextStatus) {
+    return;
+  }
+
+  const previousStatus = todo.status;
+  try {
+    const updatedTodo = await patchTodo(id, { status: nextStatus });
+    if (previousStatus !== "completed" && updatedTodo.status === "completed" && updatedTodo.recurrence !== "none") {
+      await createNextRecurringTodo(updatedTodo);
+    }
+    await loadTodos();
+    showValidation("");
+  } catch (error) {
+    console.error(error);
+    showValidation(extractErrorMessage(error, "Todoの状態更新に失敗しました。"));
+  }
+
+  render();
+}
+
+function promptDeleteTodo(id) {
+  const todo = state.todos.find((item) => item.id === id);
+  if (!todo) {
+    showValidation("削除対象のTodoが見つかりません。");
+    return;
+  }
+
+  state.pendingDeleteTodoId = todo.id;
+  els.deleteConfirmMessage.textContent = `「${todo.title}」を削除します。削除すると元に戻せません。`;
+  openDialog(els.deleteConfirmDialog);
+}
+
+async function confirmDeleteTodo() {
+  if (!Number.isInteger(state.pendingDeleteTodoId)) {
+    closeDialog(els.deleteConfirmDialog);
+    return;
+  }
+
+  try {
+    await deleteTodo(state.pendingDeleteTodoId);
+    closeDialog(els.deleteConfirmDialog);
+    await loadTodos();
+    showValidation("");
+  } catch (error) {
+    console.error(error);
+    showValidation(extractErrorMessage(error, "Todoの削除に失敗しました。"));
+  }
+
+  render();
 }
 
 async function createNextRecurringTodo(todo) {
@@ -575,6 +646,7 @@ function render() {
   updateFormMode();
   updateLabelEditorMode();
   syncDateDisplays();
+  syncCreateSummary();
   renderLabelSelector();
   renderLabelManagementList();
   renderParentOptions();
@@ -660,7 +732,7 @@ function renderParentOptions() {
 function renderTodoList() {
   const visible = state.todos;
 
-  els.todoCount.textContent = `${visible.length} items`;
+  els.todoCount.textContent = `${visible.length}件`;
 
   if (visible.length === 0) {
     els.todoList.innerHTML = `<p class="empty">一致するTodoはありません。</p>`;
@@ -670,33 +742,35 @@ function renderTodoList() {
   els.todoList.innerHTML = visible
     .map((todo) => {
       const labels = todo.labels.map((label) => `<span class="meta-chip">#${escapeHtml(label)}</span>`).join("");
-      const parent = todo.parentTodoId ? `<span class="meta-chip">parent: #${todo.parentTodoId}</span>` : "";
+      const parent = todo.parentTodoId ? `<span class="meta-chip">親タスク #${todo.parentTodoId}</span>` : "";
       const isEditing = todo.id === state.editingTodoId;
       return `
         <article class="todo-card${isEditing ? " is-editing" : ""}">
           <div class="todo-top">
-            <div>
+            <div class="todo-copy">
               <h3 class="todo-title">${escapeHtml(todo.title)}</h3>
-              <p>${escapeHtml(todo.description || "")}</p>
+              ${todo.description ? `<p class="todo-description">${escapeHtml(todo.description)}</p>` : ""}
             </div>
-            <span class="meta-chip">${todo.status}</span>
+            <span class="status-badge status-${todo.status}">${escapeHtml(getStatusLabel(todo.status))}</span>
           </div>
           <div class="todo-meta">
-            ${todo.startDate ? `<span class="meta-chip">start: ${formatDateTimeForDisplay(todo.startDate)}</span>` : ""}
-            ${todo.dueDate ? `<span class="meta-chip">due: ${formatDateTimeForDisplay(todo.dueDate)}</span>` : ""}
-            ${todo.assignee ? `<span class="meta-chip">@${escapeHtml(todo.assignee)}</span>` : ""}
-            ${todo.recurrence !== "none" ? `<span class="meta-chip">repeat: ${todo.recurrence}</span>` : ""}
+            ${todo.startDate ? `<span class="meta-chip">開始 ${formatDateTimeForDisplay(todo.startDate)}</span>` : ""}
+            ${todo.dueDate ? `<span class="meta-chip">期限 ${formatDateTimeForDisplay(todo.dueDate)}</span>` : ""}
+            ${todo.assignee ? `<span class="meta-chip">担当 ${escapeHtml(todo.assignee)}</span>` : ""}
+            ${todo.recurrence !== "none" ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceLabel(todo.recurrence))}</span>` : ""}
             ${labels}
             ${parent}
           </div>
           <div class="todo-actions">
-            <select class="status-select" data-todo-id="${todo.id}">
-              ${renderStatusOptions(todo.status)}
-            </select>
-            <button class="secondary-btn" data-edit-id="${todo.id}" ${isEditing ? "disabled" : ""}>
-              ${isEditing ? "編集中" : "編集"}
-            </button>
-            <button class="danger-btn" data-delete-id="${todo.id}">削除</button>
+            <div class="status-switcher" role="group" aria-label="状態変更">
+              ${renderStatusButtons(todo.id, todo.status)}
+            </div>
+            <div class="todo-action-buttons">
+              <button class="secondary-btn" data-edit-id="${todo.id}" ${isEditing ? "disabled" : ""}>
+                ${isEditing ? "編集中" : "編集"}
+              </button>
+              <button class="danger-btn" data-delete-id="${todo.id}">削除</button>
+            </div>
           </div>
         </article>
       `;
@@ -724,7 +798,7 @@ function renderNotifications() {
       if (now <= target && now >= reminderAt) {
         notifications.push({
           key: `start-${todo.id}`,
-          title: `Start reminder: ${todo.title}`,
+          title: `開始予定が近づいています: ${todo.title}`,
           time: `開始予定 ${formatDateTimeForDisplay(todo.startDate)}`,
         });
       }
@@ -736,7 +810,7 @@ function renderNotifications() {
       if (now <= target && now >= reminderAt) {
         notifications.push({
           key: `due-${todo.id}`,
-          title: `Due reminder: ${todo.title}`,
+          title: `締切が近づいています: ${todo.title}`,
           time: `締切 ${formatDateTimeForDisplay(todo.dueDate)}`,
         });
       }
@@ -763,11 +837,21 @@ function renderNotifications() {
     .join("");
 }
 
-function renderStatusOptions(selectedStatus) {
-  const statuses = ["active", "in_progress", "waiting", "completed"];
-  return statuses
-    .map((status) => `<option value="${status}" ${selectedStatus === status ? "selected" : ""}>${status}</option>`)
-    .join("");
+function renderStatusButtons(todoId, selectedStatus) {
+  return STATUS_ORDER.map((status) => {
+    const selected = selectedStatus === status;
+    return `
+      <button
+        type="button"
+        class="status-chip${selected ? " is-current" : ""}"
+        data-status-id="${todoId}"
+        data-next-status="${status}"
+        aria-pressed="${selected ? "true" : "false"}"
+      >
+        ${escapeHtml(getStatusLabel(status))}
+      </button>
+    `;
+  }).join("");
 }
 
 function showValidation(message) {
@@ -778,7 +862,8 @@ function showLabelValidation(message) {
   els.labelValidation.textContent = message;
 }
 
-function clearForm() {
+function clearForm({ preserveAdvancedState = false } = {}) {
+  const advancedWasOpen = els.advancedSettings.open;
   els.form.reset();
   els.title.value = "";
   els.description.value = "";
@@ -790,9 +875,7 @@ function clearForm() {
   state.selectedLabels = [];
   els.parent.value = "";
   els.recurrence.value = "none";
-  if (els.advancedSettings.open) {
-    els.advancedSettings.open = false;
-  }
+  els.advancedSettings.open = preserveAdvancedState ? advancedWasOpen : false;
   syncDateDisplays();
   closeCalendarPopover();
 }
@@ -811,9 +894,12 @@ function beginEditing(todoId) {
   render();
 }
 
-function cancelEditing({ clearValidation = true } = {}) {
+function cancelEditing({ clearValidation = true, collapse = false } = {}) {
   state.editingTodoId = null;
   clearForm();
+  if (collapse) {
+    els.createCollapsible.open = false;
+  }
   if (clearValidation) {
     showValidation("");
   }
@@ -828,9 +914,37 @@ function syncEditingState() {
 
 function updateFormMode() {
   const editing = isEditingTodo();
-  els.formHeading.textContent = editing ? "Todo編集" : "Todo作成";
-  els.submitButton.textContent = editing ? "保存" : "追加";
-  els.cancelEditButton.hidden = !editing;
+  const open = els.createCollapsible.open;
+  els.formHeading.textContent = editing ? "Todoを編集中" : "新しいTodoを追加";
+  els.formSummaryText.textContent = editing
+    ? "タイトル・期限・担当者などを見直して保存"
+    : "タイトル・期限・担当者などを設定して追加";
+  els.submitButton.textContent = editing ? "更新する" : "追加する";
+  els.cancelEditButton.textContent = editing ? "編集をキャンセル" : "キャンセル";
+  els.cancelEditButton.hidden = !open;
+}
+
+function syncCreateSummary() {
+  const snapshot = getFormSnapshot();
+  const hasDraft = hasFormDraft(snapshot);
+  const editing = isEditingTodo();
+  const open = els.createCollapsible.open;
+
+  els.formBadge.classList.toggle("hidden", !editing && !hasDraft);
+  els.formBadge.textContent = editing ? "編集中" : hasDraft ? "入力途中" : "";
+
+  const preview = buildFormPreview(snapshot, editing);
+  const shouldShowPreview = !open && (editing || hasDraft);
+  els.formPreview.classList.toggle("hidden", !shouldShowPreview);
+  if (!shouldShowPreview) {
+    els.formPreview.innerHTML = "";
+    return;
+  }
+
+  els.formPreview.innerHTML = `
+    <p class="create-preview-title">${escapeHtml(preview.title)}</p>
+    <p class="create-preview-meta">${escapeHtml(preview.meta)}</p>
+  `;
 }
 
 function populateForm(todo) {
@@ -879,6 +993,50 @@ function isEditingTodo() {
   return Number.isInteger(state.editingTodoId);
 }
 
+function getFormSnapshot() {
+  return {
+    title: (els.title.value || "").trim(),
+    description: (els.description.value || "").trim(),
+    startDate: combineDateAndTime(els.startDate.value, els.startTime.value),
+    dueDate: combineDateAndTime(els.dueDate.value, els.dueTime.value),
+    assignee: (els.assignee.value || "").trim(),
+    labels: state.selectedLabels.slice(),
+    recurrence: els.recurrence.value || "none",
+    parentTodoId: els.parent.value ? Number(els.parent.value) : null,
+  };
+}
+
+function hasFormDraft(snapshot) {
+  return Boolean(
+    snapshot.title ||
+      snapshot.description ||
+      snapshot.startDate ||
+      snapshot.dueDate ||
+      snapshot.assignee ||
+      snapshot.labels.length > 0 ||
+      snapshot.recurrence !== "none" ||
+      snapshot.parentTodoId,
+  );
+}
+
+function buildFormPreview(snapshot, editing) {
+  const meta = [];
+  if (snapshot.dueDate) meta.push(`期限 ${formatDateTimeForDisplay(snapshot.dueDate)}`);
+  if (snapshot.startDate) meta.push(`開始 ${formatDateTimeForDisplay(snapshot.startDate)}`);
+  if (snapshot.assignee) meta.push(`担当 ${snapshot.assignee}`);
+  if (snapshot.labels.length > 0) meta.push(`ラベル ${snapshot.labels.length}件`);
+  if (snapshot.recurrence !== "none") meta.push(`繰り返し ${getRecurrenceLabel(snapshot.recurrence)}`);
+  if (snapshot.parentTodoId) meta.push(`親タスク #${snapshot.parentTodoId}`);
+  if (meta.length === 0) {
+    meta.push(editing ? "保存前の内容を保持しています" : "タイトルだけでもすぐに追加できます");
+  }
+
+  return {
+    title: snapshot.title || (editing ? "タイトル未入力の編集中Todo" : "タイトル未入力の新規Todo"),
+    meta: meta.join(" / "),
+  };
+}
+
 function updateLabelEditorMode() {
   const editing = Number.isInteger(state.editingLabelId);
   els.saveLabelButton.textContent = editing ? "ラベル更新" : "ラベル作成";
@@ -906,7 +1064,7 @@ function beginLabelEditing(labelId) {
 async function submitLabelEditor() {
   const name = (els.labelNameInput.value || "").trim();
   if (!name) {
-    showLabelValidation("Label name is required.");
+    showLabelValidation("ラベル名を入力してください。");
     return;
   }
 
@@ -1024,6 +1182,14 @@ function normalizeLabelNames(labels) {
       return true;
     })
     .sort((left, right) => left.localeCompare(right, "ja", { sensitivity: "base" }));
+}
+
+function getStatusLabel(status) {
+  return STATUS_LABELS[status] || status;
+}
+
+function getRecurrenceLabel(recurrence) {
+  return RECURRENCE_LABELS[recurrence] || recurrence;
 }
 
 function isValidStartDue(startDate, dueDate) {
@@ -1159,6 +1325,7 @@ function applyCalendarDate(value) {
     els.dueDate.value = value;
   }
   syncDateDisplays();
+  syncCreateSummary();
   closeCalendarPopover();
 }
 
@@ -1169,6 +1336,7 @@ function clearCalendarDate() {
     els.dueDate.value = "";
   }
   syncDateDisplays();
+  syncCreateSummary();
   closeCalendarPopover();
 }
 
