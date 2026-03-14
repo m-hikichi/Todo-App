@@ -69,7 +69,6 @@ const els = {
   projectManagementDialog: document.getElementById("project-management-dialog"),
   projectManageNameInput: document.getElementById("project-manage-name-input"),
   saveManagedProjectButton: document.getElementById("save-managed-project-button"),
-  cancelProjectEditButton: document.getElementById("cancel-project-edit"),
   closeProjectManagementButton: document.getElementById("close-project-management"),
   projectManagementValidation: document.getElementById("project-management-validation"),
   projectManagementList: document.getElementById("project-management-list"),
@@ -282,6 +281,8 @@ function bindEvents() {
 
   els.cancelProjectCreateButton.addEventListener("click", () => {
     closeProjectCreator();
+    renderProjectField();
+    els.projectCreateToggleButton.focus();
   });
 
   els.saveProjectButton.addEventListener("click", async () => {
@@ -343,11 +344,6 @@ function bindEvents() {
 
   els.saveManagedProjectButton.addEventListener("click", async () => {
     await submitProjectEditor();
-  });
-
-  els.cancelProjectEditButton.addEventListener("click", () => {
-    resetProjectEditor();
-    render();
   });
 
   els.projectManageNameInput.addEventListener("keydown", async (event) => {
@@ -1175,21 +1171,16 @@ function syncProjectInput() {
   if (els.projectInput.value !== state.projectSearch) {
     els.projectInput.value = state.projectSearch;
   }
-  els.projectCreateToggleButton.textContent = state.projectCreatorOpen
-    ? "作成を閉じる"
-    : "+ 新しいプロジェクト";
+  els.projectCreateToggleButton.textContent = "+ 新しいプロジェクト";
 }
 
 function updateProjectEditorMode() {
-  const editing = Number.isInteger(state.editingProjectId);
-  els.cancelProjectEditButton.hidden = !editing;
   els.saveManagedProjectButton.textContent = "保存";
 }
 
 function toggleProjectCreator() {
   if (state.projectCreatorOpen) {
-    closeProjectCreator();
-    render();
+    els.projectNameInput.focus();
     return;
   }
 
