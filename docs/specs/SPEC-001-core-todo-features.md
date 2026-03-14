@@ -41,34 +41,34 @@ DockerモードではブラウザUI、デスクトップアプリモードでは
 
 ### グループA: 基本CRUDと入力検証
 - [x] FR-001: ユーザーは`title`必須、`description`任意でTodoを作成できる。
-- [ ] FR-002: ユーザーはTodoのタイトルと説明を更新できる。
+- [ ] FR-002: ユーザーはTodoのタイトルと説明を更新できる。現行実装では`PATCH /api/todos/{id}`のAPIはあるが、Web UIの編集導線は未実装。
 - [x] FR-003: ユーザーはTodoを削除できる。
 - [x] FR-004: バリデーションにより空タイトルおよび120文字超過タイトルを拒否する。
 
 ### グループB: 一覧・絞り込み・状態遷移
 - [x] FR-005: ユーザーは新しい順でTodo一覧を閲覧できる。
 - [x] FR-006: ユーザーはTodo状態を`active`、`in_progress`、`waiting`、`completed`に変更できる。
-- [ ] FR-007: ユーザーは`all`、`active`、`in_progress`、`waiting`、`completed`で絞り込める。
+- [ ] FR-007: ユーザーは`all`、`active`、`in_progress`、`waiting`、`completed`で絞り込める。現行実装では`GET /api/todos?status=...`のAPIのみ対応し、UIフィルターは未実装。
 - [ ] FR-008: ユーザーはキーワード検索（タイトル/説明/担当者/ラベル）でTodoを絞り込める。
 
 ### グループC: 属性管理（開始予定日・締め切り・担当者・ラベル）
-- [ ] FR-009: ユーザーはTodoに開始予定日時（`start_date`）を日本時刻（JST, UTC+09:00）で設定・更新・解除できる。
-- [ ] FR-010: ユーザーはTodoに締め切り日時（`due_date`）を日本時刻（JST, UTC+09:00）で設定・更新・解除できる。`start_date`が設定されている場合、`due_date`は`start_date`以降のみ許可する。
-- [ ] FR-011: ユーザーはTodoに担当者（1件）を紐づけ・解除できる。
-- [ ] FR-012: ユーザーはTodoにラベル（複数）を紐づけ・解除できる。
+- [ ] FR-009: ユーザーはTodoに開始予定日時（`start_date`）を日本時刻（JST, UTC+09:00）で設定・更新・解除できる。現行実装では新規作成フォームと`PATCH /api/todos/{id}`で扱えるが、既存Todoの編集UIは未実装。
+- [ ] FR-010: ユーザーはTodoに締め切り日時（`due_date`）を日本時刻（JST, UTC+09:00）で設定・更新・解除できる。`start_date`が設定されている場合、`due_date`は`start_date`以降のみ許可する。現行実装では新規作成フォームとAPIの整合チェックまで対応し、既存Todoの編集UIは未実装。
+- [ ] FR-011: ユーザーはTodoに担当者（1件）を紐づけ・解除できる。現行実装では担当者名の自由入力をTodoへ保存・表示できるが、既存Todoの編集UIと担当者マスタ管理は未実装。
+- [ ] FR-012: ユーザーはTodoにラベル（複数）を紐づけ・解除できる。現行実装ではラベル文字列配列の保存・表示に対応し、既存Todoの編集UIとラベルマスタ管理は未実装。
 
 ### グループD: 親子タスク管理
-- [ ] FR-013: ユーザーはTodo同士の親子関係を設定・解除できる（親は1件、子は複数）。
-- [ ] FR-014: 親子関係設定時に自己参照と循環参照を防止する。親Todoを削除した場合、子Todoの`parent_todo_id`は`null`へ更新する。
+- [ ] FR-013: ユーザーはTodo同士の親子関係を設定・解除できる（親は1件、子は複数）。現行実装では新規作成時の親設定と`PATCH /api/todos/{id}`の親更新に対応するが、子タスクの階層表示と編集UIは未実装。
+- [ ] FR-014: 親子関係設定時に自己参照と循環参照を防止する。親Todoを削除した場合、子Todoの`parent_todo_id`は`null`へ更新する。現行実装ではサーバー側の整合チェックと親削除時の親解除は実装済み。
 
 ### グループE: クライアントUIモード
-- [x] FR-015: UIはページ全体の再読み込みなしで作成・更新・削除・状態変更を反映する。
+- [ ] FR-015: UIはページ全体の再読み込みなしで作成・更新・削除・状態変更を反映する。現行実装では作成・削除・状態変更は即時反映されるが、タイトル/説明などの編集UIは未実装。
 - [ ] FR-016: デスクトップアプリモードでは外部ブラウザを使わず、アプリケーションウィンドウ内でTodo操作が完結する。
 - [ ] FR-017: Web UIとデスクトップUIで提供する機能（作成/編集/削除/絞り込み）は同等である。
 
 ### グループF: 通知・自動化・バックアップ
-- [x] FR-018: ユーザーは開始予定日/締め切りの到達前通知をアプリ内で受け取れる。通知タイミング（何分前に通知するか）はユーザー設定で変更できる。
-- [x] FR-019: ユーザーは繰り返しルール（毎日/毎週/毎月）を設定でき、完了時に次回タスクを自動生成できる。
+- [x] FR-018: ユーザーは開始予定日/締め切りの到達前通知をアプリ内で受け取れる。通知タイミング（何分前に通知するか）はユーザー設定で変更できる。現行実装では通知判定と設定保持はクライアント内状態で行う。
+- [x] FR-019: ユーザーは繰り返しルール（毎日/毎週/毎月）を設定でき、完了時に次回タスクを自動生成できる。現行実装ではWeb UIで状態を`completed`へ変更した際に次回Todoを生成する。
 - [ ] FR-020: ユーザーはTodoデータ（Todo/担当者/ラベル/親子関係）をエクスポート/インポートできる（MVPではdry-run/merge/replace選択などの安全機能は対象外）。
 
 ### 優先度
@@ -97,7 +97,7 @@ DockerモードではブラウザUI、デスクトップアプリモードでは
 
 ## 非機能要件
 - [ ] NFR-001: Todo件数1000件以下で、一覧/作成/更新/削除APIの95パーセンタイル応答時間を500ms未満とする。
-- [ ] NFR-002: すべての書き込み操作はトランザクションで実行する。
+- [x] NFR-002: すべてのサーバー側書き込み操作はトランザクションで実行する。
 - [x] NFR-003: クライアント側検証があっても、サーバー側で入力検証を必ず行う。
 - [ ] NFR-004: デスクトップアプリのメインウィンドウ初回表示を3秒以内とする。
 - [ ] NFR-005: Web UIとデスクトップUIで主要操作フローの操作回数差を1操作以内に収める。
@@ -111,10 +111,11 @@ DockerモードではブラウザUI、デスクトップアプリモードでは
 | title | text | yes | 最大120文字 |
 | description | text | no | 任意の詳細 |
 | status | text | yes | `active`、`in_progress`、`waiting`、`completed` |
-| start_date | datetime | no | 開始予定日時（JST, UTC+09:00） |
-| due_date | datetime | no | 締め切り日時（JST, UTC+09:00） |
+| start_date | text | no | 開始予定日時。日付のみは`YYYY-MM-DD`、時刻付きはJST文字列で保持する |
+| due_date | text | no | 締め切り日時。日付のみは`YYYY-MM-DD`、時刻付きはJST文字列で保持する |
 | recurrence_rule | text | no | `none`、`daily`、`weekly`、`monthly` |
-| assignee_id | integer | no | `Assignee.id`参照 |
+| assignee | text | no | 担当者名。現行実装ではTodoへ直接保持する |
+| labels | text[] | no | ラベル名配列。SQLite上はJSON文字列として保持する |
 | parent_todo_id | integer | no | 親Todoの`Todo.id`参照。ルートタスクはnull |
 | created_at | datetime | yes | UTCタイムスタンプ |
 | updated_at | datetime | yes | UTCタイムスタンプ |
@@ -125,47 +126,24 @@ DockerモードではブラウザUI、デスクトップアプリモードでは
 - 通知スケジュール時刻（`notify_at`）はUTCで管理する。
 - `created_at`と`updated_at`はUTCで保存・返却する。
 
-### Notification
+### クライアント内 Notification
 | フィールド | 型 | 必須 | 説明 |
 |------------|----|------|------|
-| id | integer | yes | 主キー |
-| todo_id | integer | yes | `Todo.id`参照 |
-| kind | text | yes | `start_reminder`または`due_reminder` |
-| notify_at | datetime | yes | 通知予定時刻（UTC） |
-| sent_at | datetime | no | 通知送信時刻（UTC） |
-| read_at | datetime | no | ユーザー既読時刻（UTC） |
+| key | text | yes | `start-<todo_id>`または`due-<todo_id>` |
+| title | text | yes | 通知タイトル |
+| time | text | yes | 表示用時刻文字列 |
 
-### NotificationSetting
+### クライアント内 NotificationSetting
 | フィールド | 型 | 必須 | 説明 |
 |------------|----|------|------|
-| id | integer | yes | 主キー |
 | start_reminder_minutes | integer | yes | 開始予定日の何分前に通知するか（例: 30） |
 | due_reminder_minutes | integer | yes | 締め切り日の何分前に通知するか（例: 60） |
 | enabled | boolean | yes | 通知の有効/無効 |
-| updated_at | datetime | yes | UTCタイムスタンプ |
-
-### Assignee
-| フィールド | 型 | 必須 | 説明 |
-|------------|----|------|------|
-| id | integer | yes | 主キー |
-| name | text | yes | 担当者名（ユニーク） |
-| created_at | datetime | yes | UTCタイムスタンプ |
-
-### Label
-| フィールド | 型 | 必須 | 説明 |
-|------------|----|------|------|
-| id | integer | yes | 主キー |
-| name | text | yes | ラベル名（ユニーク） |
-| color | text | no | 表示色（例: `#3B82F6`） |
-| created_at | datetime | yes | UTCタイムスタンプ |
-
-### TodoLabel
-| フィールド | 型 | 必須 | 説明 |
-|------------|----|------|------|
-| todo_id | integer | yes | `Todo.id`参照 |
-| label_id | integer | yes | `Label.id`参照 |
+| persisted | boolean | yes | 現行実装では`false`。リロードで既定値へ戻る |
 
 ## API仕様
+
+### 現在実装されているAPI
 
 ### POST /api/todos
 Todoを作成する。
@@ -175,11 +153,12 @@ Todoを作成する。
 {
   "title": "牛乳を買う",
   "description": "2リットル",
-  "start_date": "2026-03-08T09:00:00+09:00",
-  "due_date": "2026-03-10T09:00:00+09:00",
+  "status": "active",
+  "start_date": "2026-03-08T09:00",
+  "due_date": "2026-03-10T09:00",
   "recurrence_rule": "weekly",
-  "assignee_id": 3,
-  "label_ids": [1, 4],
+  "assignee": "Mika",
+  "labels": ["shopping", "weekly"],
   "parent_todo_id": null
 }
 ```
@@ -191,82 +170,61 @@ Todoを作成する。
   "title": "牛乳を買う",
   "description": "2リットル",
   "status": "active",
-  "start_date": "2026-03-08T09:00:00+09:00",
-  "due_date": "2026-03-10T09:00:00+09:00",
+  "start_date": "2026-03-08T09:00",
+  "due_date": "2026-03-10T09:00",
   "recurrence_rule": "weekly",
-  "assignee_id": 3,
-  "label_ids": [1, 4],
+  "assignee": "Mika",
+  "labels": ["shopping", "weekly"],
   "parent_todo_id": null,
   "created_at": "2026-03-07T00:00:00Z",
   "updated_at": "2026-03-07T00:00:00Z"
 }
 ```
 
-### GET /api/todos?status=all|active|in_progress|waiting|completed&q=<keyword>
-絞り込み条件に応じたTodo一覧を返す。追加クエリとして`assignee_id`、`label_id`、`parent_todo_id`を受け付ける。`q`はタイトル/説明/担当者/ラベルを対象に部分一致検索する。
+### GET /api/todos?status=all|active|in_progress|waiting|completed
+Todo一覧を返す。現行実装で対応するクエリは`status`のみで、`q`などの検索条件は未実装。
 
 ### PATCH /api/todos/{id}
-タイトル、説明、状態、開始予定日、締め切り、担当者、ラベル、親子関係を更新する。
-
-### GET /api/notifications?unread=true
-未読通知一覧を返す。
-
-### POST /api/notifications/{id}/read
-通知を既読化する。
-
-### GET /api/notification-settings
-通知設定を取得する。
-
-### PATCH /api/notification-settings
-通知設定（開始予定日通知/締め切り通知の分前設定、有効/無効）を更新する。
-
-### GET /api/backup/export
-Todoデータ一式（Todo/担当者/ラベル/親子関係）をJSONでエクスポートする。
-
-### POST /api/backup/import
-エクスポート済みJSONを受け取り、データをインポートする。
+タイトル、説明、状態、開始予定日、締め切り、担当者、ラベル、繰り返し、親子関係を部分更新する。
 
 ### DELETE /api/todos/{id}
 Todoを削除する。
 
-### GET /api/assignees
-担当者一覧を返す。
-
-### POST /api/assignees
-担当者を作成する。
-
-### GET /api/labels
-ラベル一覧を返す。
-
-### POST /api/labels
-ラベルを作成する。
+### 未実装のAPI
+- `GET /api/notifications`
+- `POST /api/notifications/{id}/read`
+- `GET /api/notification-settings`
+- `PATCH /api/notification-settings`
+- `GET /api/backup/export`
+- `POST /api/backup/import`
+- `GET /api/assignees`
+- `POST /api/assignees`
+- `GET /api/labels`
+- `POST /api/labels`
 
 ## 画面仕様
 
 ### 共通メイン画面構成（Web/デスクトップ）
-- ヘッダー: アプリタイトル、フィルター操作、キーワード検索、通知ベル（表示対象件数バッジ付き。クリックで右上ポップオーバー表示）、通知設定歯車、バックアップ導線（エクスポート/インポート）
+- ヘッダー: アプリタイトル、通知ベル（表示対象件数バッジ付き。クリックで右上ポップオーバー表示）、通知設定ボタン
 - Todo入力エリア: 「Todo作成」フォーム自体を折りたたみ可能とし、入力は2段階で提供する。最小構成はタイトル、説明、締切日/締切時刻、追加ボタン。詳細設定（折りたたみ）に開始予定日/開始時刻、担当者、ラベル、繰り返し、親タスクを配置する。日付入力欄はカレンダーアイコン付きで、クリック時にカレンダーポップオーバーを開いて日付選択し、表示形式は`YYYY/MM/DD`とする。日付欄のキーボード直接入力は許可しない
-- Todo一覧エリア: 各項目に状態切り替え、編集、削除、担当者/ラベル/開始予定日/締め切り/繰り返し表示、子タスク表示
+- Todo一覧エリア: 各項目に状態切り替え、削除、担当者/ラベル/開始予定日/締め切り/繰り返し/親タスク表示。タイトル/説明編集ボタン、検索UI、状態フィルター、バックアップ導線は未実装
 
 ### モード別UI要件
 | モード | 表示先 | 補足 |
 |-------|-------|------|
 | Docker | ブラウザUI | `http://<host>:<port>/`でアクセス |
-| Desktop | アプリケーションウィンドウ | 起動時に専用ウィンドウを表示。外部ブラウザは不要 |
+| Desktop | 未実装 | 将来的にアプリケーションウィンドウを表示し、外部ブラウザ不要で操作できるようにする |
 
 ### ユーザーフロー（Docker）
 1. ユーザーがブラウザで`/`を開く。
 2. 既存Todoが読み込まれる。
-3. ユーザーが検索・作成/編集/完了/削除を行う。
+3. ユーザーが作成・状態変更・削除を行う。
 4. 開始予定日/締め切りに応じた通知がベル押下時の右上ポップオーバーに表示される。
 5. UIは即時更新され、再読み込み後も状態が保持される。
 
 ### ユーザーフロー（Desktop）
-1. ユーザーがデスクトップアプリを起動する。
-2. アプリケーションウィンドウが開き、既存Todoが読み込まれる。
-3. ユーザーが同一画面上で検索・作成/編集/完了/削除を行う。
-4. 開始予定日/締め切りに応じた通知がベル押下時の右上ポップオーバーに表示される。
-5. UIは即時更新され、再起動後も状態が保持される。
+1. 現行実装では未提供。
+2. デスクトップアプリモード実装時に、アプリケーションウィンドウ内でSPEC-001の主要操作を提供する予定。
 
 ## テスト仕様
 ### グループA: 基本CRUDと入力検証
