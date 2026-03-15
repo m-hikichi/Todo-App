@@ -887,9 +887,20 @@ function renderTodoList() {
 
   els.todoList.innerHTML = visible
     .map((todo) => {
-      const project = todo.project ? `<span class="meta-chip">プロジェクト ${escapeHtml(todo.project.name)}</span>` : "";
-      const parent = todo.parentTodoId ? `<span class="meta-chip">親タスク #${todo.parentTodoId}</span>` : "";
+      const metaChips = [
+        todo.startDate ? `<span class="meta-chip">開始 ${formatDateTimeForDisplay(todo.startDate)}</span>` : "",
+        todo.dueDate ? `<span class="meta-chip">期限 ${formatDateTimeForDisplay(todo.dueDate)}</span>` : "",
+        todo.assignee ? `<span class="meta-chip">担当 ${escapeHtml(todo.assignee)}</span>` : "",
+        todo.project ? `<span class="meta-chip">プロジェクト ${escapeHtml(todo.project.name)}</span>` : "",
+        todo.recurrence !== "none"
+          ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceText(todo.recurrence))}</span>`
+          : "",
+        todo.parentTodoId ? `<span class="meta-chip">親タスク #${todo.parentTodoId}</span>` : "",
+      ]
+        .filter(Boolean)
+        .join("");
       const isEditing = todo.id === state.editingTodoId;
+      const statusControlLabel = `${todo.title}の状態変更`;
       return `
         <article class="todo-card${isEditing ? " is-editing" : ""}">
           <div class="todo-top">
@@ -899,17 +910,12 @@ function renderTodoList() {
             </div>
             <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
           </div>
-          <div class="todo-meta">
-            ${todo.startDate ? `<span class="meta-chip">開始 ${formatDateTimeForDisplay(todo.startDate)}</span>` : ""}
-            ${todo.dueDate ? `<span class="meta-chip">期限 ${formatDateTimeForDisplay(todo.dueDate)}</span>` : ""}
-            ${todo.assignee ? `<span class="meta-chip">担当 ${escapeHtml(todo.assignee)}</span>` : ""}
-            ${project}
-            ${todo.recurrence !== "none" ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceText(todo.recurrence))}</span>` : ""}
-            ${parent}
-          </div>
+          ${metaChips ? `<div class="todo-meta">${metaChips}</div>` : ""}
           <div class="todo-actions">
-            <div class="status-switcher" role="group" aria-label="状態変更">
-              ${renderStatusButtons(todo.id, todo.status)}
+            <div class="todo-status-controls">
+              <div class="status-switcher" role="group" aria-label="${escapeHtml(statusControlLabel)}">
+                ${renderStatusButtons(todo.id, todo.status)}
+              </div>
             </div>
             <div class="todo-action-buttons">
               <button class="secondary-btn" data-edit-id="${todo.id}" ${isEditing ? "disabled" : ""}>
@@ -986,6 +992,7 @@ function renderNotifications() {
 function renderStatusButtons(todoId, selectedStatus) {
   return STATUS_ORDER.map((status) => {
     const selected = selectedStatus === status;
+    const label = getStatusText(status);
     return `
       <button
         type="button"
@@ -993,8 +1000,9 @@ function renderStatusButtons(todoId, selectedStatus) {
         data-status-id="${todoId}"
         data-next-status="${status}"
         aria-pressed="${selected ? "true" : "false"}"
+        aria-label="${escapeHtml(selected ? `${label}（現在の状態）` : `${label}に変更`)}"
       >
-        ${escapeHtml(getStatusText(status))}
+        ${escapeHtml(label)}
       </button>
     `;
   }).join("");
