@@ -55,11 +55,14 @@ const els = {
   dueDateTrigger: document.getElementById("todo-due-date-trigger"),
   dueDateDisplay: document.getElementById("todo-due-date-display"),
   dueTime: document.getElementById("todo-due-time"),
-  projectInput: document.getElementById("todo-project-input"),
+  projectTrigger: document.getElementById("todo-project-trigger"),
+  projectDisplay: document.getElementById("todo-project-display"),
   projectPicker: document.getElementById("todo-project-picker"),
+  projectDropdown: document.getElementById("todo-project-dropdown"),
+  projectSearchInput: document.getElementById("todo-project-search"),
   projectOptions: document.getElementById("todo-project-options"),
-  projectClearButton: document.getElementById("todo-project-clear"),
-  projectCreateToggleButton: document.getElementById("project-create-toggle"),
+  projectCreateActionButton: document.getElementById("project-create-action"),
+  projectCreateActionLabel: document.getElementById("project-create-action-label"),
   projectCreator: document.getElementById("project-quick-create"),
   projectNameInput: document.getElementById("project-name-input"),
   saveProjectButton: document.getElementById("save-project-button"),
@@ -139,7 +142,7 @@ function bindEvents() {
   els.settingsButton.addEventListener("click", () => {
     closeNotificationPopover();
     closeCalendarPopover();
-    closeProjectPicker({ commitSelection: true, renderAfter: false });
+    closeProjectPicker({ renderAfter: false });
     closeDialog(els.projectManagementDialog);
     closeProjectCreator({ clearInput: false });
     resetProjectEditor();
@@ -150,7 +153,7 @@ function bindEvents() {
   els.projectManagerButton.addEventListener("click", () => {
     closeNotificationPopover();
     closeCalendarPopover();
-    closeProjectPicker({ commitSelection: true, renderAfter: false });
+    closeProjectPicker({ renderAfter: false });
     closeDialog(els.settingsDialog);
     closeProjectCreator({ clearInput: false });
     resetProjectEditor();
@@ -246,7 +249,7 @@ function bindEvents() {
     }
 
     if (!els.projectPicker.contains(target)) {
-      closeProjectPicker({ commitSelection: true });
+      closeProjectPicker();
     }
   });
 
@@ -254,7 +257,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeNotificationPopover();
       closeCalendarPopover();
-      closeProjectPicker({ commitSelection: true });
+      closeProjectPicker();
     }
   });
 
@@ -275,14 +278,10 @@ function bindEvents() {
     cancelEditing({ collapse: true });
   });
 
-  els.projectCreateToggleButton.addEventListener("click", () => {
-    toggleProjectCreator();
-  });
-
   els.cancelProjectCreateButton.addEventListener("click", () => {
     closeProjectCreator();
     renderProjectField();
-    els.projectCreateToggleButton.focus();
+    els.projectSearchInput.focus();
   });
 
   els.saveProjectButton.addEventListener("click", async () => {
@@ -290,41 +289,55 @@ function bindEvents() {
   });
 
   els.projectNameInput.addEventListener("keydown", async (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeProjectCreator();
+      renderProjectField();
+      els.projectSearchInput.focus();
+      return;
+    }
     if (event.key !== "Enter") return;
     event.preventDefault();
     await submitProjectCreator();
   });
 
-  els.projectInput.addEventListener("focus", () => {
-    openProjectPicker();
-  });
-
-  els.projectInput.addEventListener("click", () => {
-    openProjectPicker();
-  });
-
-  els.projectInput.addEventListener("input", () => {
-    state.projectSearch = String(els.projectInput.value || "");
-    if (getSelectedProjectName() !== state.projectSearch.trim()) {
-      state.selectedProjectId = null;
+  els.projectTrigger.addEventListener("click", () => {
+    if (state.projectPickerOpen) {
+      closeProjectPicker({ focusTrigger: true });
+      return;
     }
     openProjectPicker();
+  });
+
+  els.projectSearchInput.addEventListener("input", () => {
+    state.projectSearch = String(els.projectSearchInput.value || "");
     renderProjectField();
   });
 
-  els.projectInput.addEventListener("keydown", (event) => {
+  els.projectSearchInput.addEventListener("keydown", async (event) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      closeProjectPicker({ commitSelection: true });
+      closeProjectPicker({ focusTrigger: true });
       return;
     }
     if (event.key !== "Enter") return;
     event.preventDefault();
-    commitProjectSelectionFromInput();
-  });
 
-  els.projectClearButton.addEventListener("click", () => {
-    clearSelectedProject();
+    if (state.projectCreatorOpen) {
+      await submitProjectCreator();
+      return;
+    }
+
+    const exactMatch = findProjectByName(state.projectSearch);
+    if (exactMatch) {
+      selectProjectByID(exactMatch.id);
+      return;
+    }
+
+    const createDraft = getProjectCreatorSeedName();
+    if (createDraft) {
+      openProjectCreator({ seedName: createDraft });
+    }
   });
 
   els.projectOptions.addEventListener("click", (event) => {
@@ -340,6 +353,10 @@ function bindEvents() {
       return;
     }
     selectProjectByID(Number(rawProjectID));
+  });
+
+  els.projectCreateActionButton.addEventListener("click", () => {
+    openProjectCreator({ seedName: getProjectCreatorSeedName() });
   });
 
   els.saveManagedProjectButton.addEventListener("click", async () => {
@@ -731,10 +748,8 @@ function toApiTodoPayload(todo) {
 function render() {
   updateFormMode();
   updateProjectEditorMode();
-  syncProjectInput();
   syncDateDisplays();
-  syncCreateSummary();
-  renderProjectOptions();
+  renderProjectField();
   renderProjectManagementList();
   renderParentOptions();
   renderTodoList();
@@ -742,18 +757,20 @@ function render() {
 }
 
 function renderProjectField() {
-  syncProjectInput();
+  els.projectPicker.classList.toggle("is-open", state.projectPickerOpen);
+  els.projectDropdown.classList.toggle("hidden", !state.projectPickerOpen);
+  els.projectCreator.classList.toggle("hidden", !state.projectCreatorOpen);
+  els.projectTrigger.setAttribute("aria-expanded", state.projectPickerOpen ? "true" : "false");
+  syncProjectTrigger();
+  syncProjectSearchInput();
+  syncProjectCreateAction();
   syncCreateSummary();
   renderProjectOptions();
 }
 
 function renderProjectOptions() {
-  els.projectOptions.classList.toggle("hidden", !state.projectPickerOpen);
-  els.projectInput.setAttribute("aria-expanded", state.projectPickerOpen ? "true" : "false");
-  els.projectClearButton.classList.toggle("hidden", state.selectedProjectId === null && !state.projectSearch.trim());
-  els.projectCreator.classList.toggle("hidden", !state.projectCreatorOpen);
-
   if (!state.projectPickerOpen) {
+    els.projectOptions.innerHTML = "";
     return;
   }
 
@@ -768,14 +785,18 @@ function renderProjectOptions() {
         role="option"
         aria-selected="${selectedProject === null ? "true" : "false"}"
       >
-        <span class="project-option-name">未設定</span>
-        <span class="project-option-meta">プロジェクトなし</span>
+        <span class="project-option-name">プロジェクトなし</span>
+        ${
+          selectedProject === null
+            ? '<span class="material-symbols-outlined project-option-check" aria-hidden="true">check</span>'
+            : ""
+        }
       </button>
     `,
   ];
 
   if (filteredProjects.length === 0) {
-    options.push('<p class="empty project-empty">一致するプロジェクトはありません。</p>');
+    options.push('<p class="empty project-empty">該当するプロジェクトがありません</p>');
   } else {
     options.push(
       filteredProjects
@@ -789,7 +810,11 @@ function renderProjectOptions() {
               aria-selected="${project.id === state.selectedProjectId ? "true" : "false"}"
             >
               <span class="project-option-name">${escapeHtml(project.name)}</span>
-              <span class="project-option-meta">${project.id === state.selectedProjectId ? "選択中" : "候補"}</span>
+              ${
+                project.id === state.selectedProjectId
+                  ? '<span class="material-symbols-outlined project-option-check" aria-hidden="true">check</span>'
+                  : ""
+              }
             </button>
           `,
         )
@@ -1002,7 +1027,7 @@ function clearForm({ preserveAdvancedState = false } = {}) {
   els.parent.value = "";
   els.recurrence.value = "none";
   els.advancedSettings.open = preserveAdvancedState ? advancedWasOpen : false;
-  closeProjectPicker({ commitSelection: false, renderAfter: false });
+  closeProjectPicker({ renderAfter: false });
   closeProjectCreator();
   syncDateDisplays();
   closeCalendarPopover();
@@ -1081,7 +1106,7 @@ function populateForm(todo) {
   applyStoredDateTime("start", todo.startDate);
   applyStoredDateTime("due", todo.dueDate);
   state.selectedProjectId = todo.projectId;
-  syncSelectedProject(todo.project ? todo.project.name : "");
+  syncSelectedProject();
   els.assignee.value = todo.assignee;
   els.recurrence.value = todo.recurrence || "none";
   renderParentOptions();
@@ -1167,27 +1192,37 @@ function buildFormPreview(snapshot, editing) {
   };
 }
 
-function syncProjectInput() {
-  if (els.projectInput.value !== state.projectSearch) {
-    els.projectInput.value = state.projectSearch;
+function syncProjectTrigger() {
+  const selectedProject = getSelectedProject();
+  els.projectDisplay.textContent = selectedProject ? selectedProject.name : "プロジェクトなし";
+  els.projectDisplay.classList.toggle("is-placeholder", !selectedProject);
+}
+
+function syncProjectSearchInput() {
+  if (els.projectSearchInput.value !== state.projectSearch) {
+    els.projectSearchInput.value = state.projectSearch;
   }
-  els.projectCreateToggleButton.textContent = "+ 新しいプロジェクト";
+}
+
+function syncProjectCreateAction() {
+  const createDraft = getProjectCreatorSeedName();
+  els.projectCreateActionLabel.textContent = createDraft
+    ? `「${createDraft}」を新しいプロジェクトとして作成`
+    : "+ 新しいプロジェクトを作成";
 }
 
 function updateProjectEditorMode() {
   els.saveManagedProjectButton.textContent = "保存";
 }
 
-function toggleProjectCreator() {
-  if (state.projectCreatorOpen) {
-    els.projectNameInput.focus();
-    return;
+function openProjectCreator({ seedName = null } = {}) {
+  if (!state.projectPickerOpen) {
+    state.projectPickerOpen = true;
   }
-
   state.projectCreatorOpen = true;
-  els.projectNameInput.value = state.selectedProjectId === null ? state.projectSearch.trim() : "";
+  els.projectNameInput.value = seedName !== null ? seedName : getProjectCreatorSeedName();
   showProjectValidation("");
-  render();
+  renderProjectField();
   els.projectNameInput.focus();
 }
 
@@ -1217,11 +1252,11 @@ async function submitProjectCreator() {
     });
     const project = fromApiProject(created);
     state.selectedProjectId = project ? project.id : null;
-    state.projectSearch = project ? project.name : name;
+    state.projectSearch = "";
     await loadProjects();
+    state.projectPickerOpen = false;
     closeProjectCreator();
     showProjectValidation("");
-    closeProjectPicker({ commitSelection: false, renderAfter: false });
   } catch (error) {
     console.error(error);
     showProjectValidation(extractProjectErrorMessage(error, "プロジェクトの保存に失敗しました。"));
@@ -1313,56 +1348,38 @@ async function deleteProject(projectID) {
 }
 
 function openProjectPicker() {
-  if (state.projectPickerOpen) return;
-  state.projectPickerOpen = true;
-  renderProjectField();
-}
-
-function closeProjectPicker({ commitSelection = true, renderAfter = true } = {}) {
-  if (!state.projectPickerOpen) {
+  if (state.projectPickerOpen) {
     return;
   }
-  if (commitSelection) {
-    commitProjectSelectionFromInput({ renderAfter: false });
+  state.projectPickerOpen = true;
+  state.projectSearch = "";
+  closeProjectCreator();
+  renderProjectField();
+  requestAnimationFrame(() => {
+    els.projectSearchInput.focus();
+  });
+}
+
+function closeProjectPicker({ focusTrigger = false, renderAfter = true } = {}) {
+  if (!state.projectPickerOpen && !state.projectCreatorOpen && !state.projectSearch) {
+    return;
   }
   state.projectPickerOpen = false;
+  state.projectSearch = "";
+  closeProjectCreator();
   if (renderAfter) renderProjectField();
-}
-
-function commitProjectSelectionFromInput({ renderAfter = true } = {}) {
-  const query = normalizeProjectName(state.projectSearch);
-  if (!query) {
-    state.selectedProjectId = null;
-    state.projectSearch = "";
-    if (renderAfter) renderProjectField();
-    return;
+  if (focusTrigger) {
+    els.projectTrigger.focus();
   }
-
-  const exactMatch = findProjectByName(query);
-  if (exactMatch) {
-    state.selectedProjectId = exactMatch.id;
-    state.projectSearch = exactMatch.name;
-  } else if (state.selectedProjectId !== null) {
-    const selectedProject = getSelectedProject();
-    if (selectedProject) {
-      state.projectSearch = selectedProject.name;
-    } else {
-      state.selectedProjectId = null;
-      state.projectSearch = query;
-    }
-  } else {
-    state.projectSearch = query;
-  }
-
-  if (renderAfter) renderProjectField();
 }
 
 function selectProjectByID(projectID) {
   const project = findProjectByID(projectID);
   if (!project) return;
   state.selectedProjectId = project.id;
-  state.projectSearch = project.name;
+  state.projectSearch = "";
   state.projectPickerOpen = false;
+  closeProjectCreator();
   renderProjectField();
 }
 
@@ -1370,33 +1387,24 @@ function clearSelectedProject({ renderAfter = true } = {}) {
   state.selectedProjectId = null;
   state.projectSearch = "";
   state.projectPickerOpen = false;
+  closeProjectCreator();
   if (renderAfter) renderProjectField();
 }
 
-function syncSelectedProject(fallbackName = "") {
+function syncSelectedProject() {
   if (state.selectedProjectId === null) {
-    if (!state.projectSearch && fallbackName) {
-      state.projectSearch = fallbackName;
-    }
     return;
   }
 
   const project = findProjectByID(state.selectedProjectId);
   if (!project) {
     state.selectedProjectId = null;
-    state.projectSearch = fallbackName;
-    return;
   }
-  state.projectSearch = project.name;
 }
 
 function getFilteredProjects(query) {
   const normalizedQuery = normalizeProjectName(query).toLowerCase();
   if (!normalizedQuery) {
-    return state.availableProjects.slice();
-  }
-  const selectedProject = getSelectedProject();
-  if (selectedProject && selectedProject.name.toLowerCase() === normalizedQuery) {
     return state.availableProjects.slice();
   }
   return state.availableProjects.filter((project) => project.name.toLowerCase().includes(normalizedQuery));
@@ -1423,6 +1431,14 @@ function findProjectByName(name) {
 
 function normalizeProjectName(name) {
   return String(name || "").trim();
+}
+
+function getProjectCreatorSeedName() {
+  const query = normalizeProjectName(state.projectSearch);
+  if (!query) {
+    return "";
+  }
+  return findProjectByName(query) ? "" : query;
 }
 
 function extractProjectErrorMessage(error, fallback) {

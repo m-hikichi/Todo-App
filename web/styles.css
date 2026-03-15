@@ -376,69 +376,89 @@ h2 {
 
 .project-picker {
   position: relative;
-  display: grid;
-  gap: 10px;
 }
 
-.project-helper {
-  margin: 0;
-  padding-left: 4px;
-  color: #4f675d;
-  font-size: 12px;
+.project-picker.is-open .project-combobox {
+  border-color: rgba(0, 92, 83, 0.34);
+  box-shadow:
+    0 0 0 3px rgba(0, 92, 83, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .project-combobox {
-  position: relative;
-}
-
-.project-combobox-input {
+  appearance: none;
   width: 100%;
   min-height: 56px;
+  padding: 0 16px;
   border: 1px solid rgba(111, 127, 119, 0.44);
-  border-radius: 14px;
-  padding: 0 52px 0 16px;
-  background: #fff;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 246, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
   color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font: inherit;
-  font-size: 14px;
-}
-
-.project-combobox-input:focus {
-  outline: 2px solid color-mix(in oklab, var(--color-primary), white 15%);
-  outline-offset: 2px;
-  border-color: transparent;
-}
-
-.project-clear-btn {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: #4b6359;
-  display: inline-grid;
-  place-items: center;
+  text-align: left;
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.project-clear-btn:hover {
-  background: rgba(220, 235, 228, 0.8);
+.project-combobox:hover {
+  border-color: #4e675d;
 }
 
-.project-options {
+.project-combobox:focus-visible {
+  outline: none;
+  border-color: rgba(0, 92, 83, 0.34);
+  box-shadow:
+    0 0 0 3px rgba(0, 92, 83, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.project-combobox-icon,
+.project-combobox-arrow {
+  flex: 0 0 auto;
+  color: #4b6359;
+}
+
+.project-combobox-arrow {
+  margin-left: auto;
+  transition:
+    transform 160ms ease,
+    color 160ms ease;
+}
+
+.project-picker.is-open .project-combobox-arrow {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+.project-combobox-value {
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-combobox-value.is-placeholder {
+  color: #71867d;
+  font-weight: 600;
+}
+
+.project-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
   z-index: 40;
-  max-height: 240px;
-  overflow: auto;
   display: grid;
-  gap: 6px;
+  gap: 10px;
   padding: 10px;
   border: 1px solid rgba(88, 108, 99, 0.18);
   border-radius: 18px;
@@ -446,15 +466,60 @@ h2 {
   box-shadow: 0 16px 32px rgba(7, 35, 29, 0.16);
 }
 
-.project-options.hidden {
-  display: none;
+.project-search-shell {
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(111, 127, 119, 0.28);
+  border-radius: 12px;
+  background: rgba(244, 249, 246, 0.94);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-search-shell:focus-within {
+  border-color: rgba(0, 92, 83, 0.3);
+  box-shadow: 0 0 0 2px rgba(0, 92, 83, 0.08);
+}
+
+.project-search-icon {
+  color: #5a7067;
+}
+
+.project-search-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.project-search-input::placeholder {
+  color: #71867d;
+}
+
+.project-search-input:focus {
+  outline: none;
+}
+
+.project-options {
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+  padding: 0;
 }
 
 .project-option {
-  border: 1px solid rgba(111, 127, 119, 0.34);
-  border-radius: 14px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.72);
+  appearance: none;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: transparent;
   color: #21453b;
   display: flex;
   align-items: center;
@@ -465,21 +530,17 @@ h2 {
   cursor: pointer;
   transition:
     background 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
+    color 140ms ease;
 }
 
 .project-option:hover {
-  border-color: rgba(0, 92, 83, 0.38);
-  background: #e5f1ec;
-  transform: translateY(-1px);
+  background: #e6f0ea;
+  color: #173d32;
 }
 
 .project-option.is-selected {
-  border-color: transparent;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: rgba(0, 92, 83, 0.12);
+  color: #0f4d41;
 }
 
 .project-option-name {
@@ -487,16 +548,16 @@ h2 {
   font-weight: 700;
 }
 
-.project-option-meta {
-  font-size: 12px;
-  color: inherit;
-  opacity: 0.82;
+.project-option-check {
+  color: var(--color-primary);
+  font-size: 18px;
 }
 
 .project-empty {
   margin: 0;
   font-size: 13px;
-  padding: 8px 4px 2px;
+  padding: 12px 14px;
+  color: #4f675d;
 }
 
 .dialog-copy {
@@ -505,16 +566,75 @@ h2 {
   font-size: 13px;
 }
 
-.project-quick-create {
+.project-dropdown-footer {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid rgba(88, 108, 99, 0.16);
-  border-radius: 16px;
-  background: rgba(245, 249, 246, 0.92);
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(88, 108, 99, 0.14);
 }
 
-.project-inline-form,
+.project-dropdown-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.project-dropdown-action {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  color: #0f4d41;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-dropdown-action:hover {
+  background: rgba(0, 92, 83, 0.08);
+}
+
+.project-dropdown-action .material-symbols-outlined {
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.project-quick-create {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(88, 108, 99, 0.18);
+  background: transparent;
+}
+
+.project-inline-form {
+  display: grid;
+  gap: 8px;
+}
+
+.project-inline-input {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(111, 127, 119, 0.34);
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.project-inline-input:focus {
+  outline: 2px solid color-mix(in oklab, var(--color-primary), white 15%);
+  outline-offset: 2px;
+  border-color: transparent;
+}
+
 .project-dialog-editor {
   display: grid;
   gap: 10px;
@@ -524,8 +644,15 @@ h2 {
 .project-dialog-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 10px;
+}
+
+.project-inline-actions {
+  justify-content: flex-start;
+}
+
+.project-dialog-actions {
+  justify-content: flex-end;
 }
 
 .project-admin-row {
@@ -582,6 +709,72 @@ h2 {
 
 .date-display.placeholder {
   color: #71867d;
+}
+
+.datetime-note {
+  margin: -2px 0 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(228, 239, 233, 0.74);
+  color: #36554b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.datetime-note .material-symbols-outlined,
+.time-input-icon {
+  color: #29574a;
+}
+
+.time-input-shell {
+  min-height: 56px;
+  padding: 0 14px;
+  border: 1px solid rgba(111, 127, 119, 0.44);
+  border-radius: 14px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-input-shell:hover {
+  border-color: #4e675d;
+}
+
+.time-input-shell:focus-within {
+  outline: 2px solid color-mix(in oklab, var(--color-primary), white 15%);
+  outline-offset: 2px;
+  border-color: transparent;
+}
+
+.time-input-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.time-input-control:focus {
+  outline: none;
+}
+
+.time-input-control::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.time-input-hint {
+  margin: 0;
+  padding-left: 4px;
+  color: #4f675d;
+  font-size: 12px;
 }
 
 .advanced-settings {
@@ -1104,12 +1297,16 @@ h2 {
 
   .field-header,
   .field-actions,
+  .project-dropdown-actions,
   .project-admin-row,
   .project-admin-actions,
-  .project-inline-actions,
   .project-dialog-actions,
   .todo-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .project-inline-form {
+    grid-template-columns: 1fr;
   }
 }

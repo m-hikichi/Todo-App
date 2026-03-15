@@ -89,62 +89,81 @@
             <div class="form-row">
               <div class="form-field">
                 <div class="field-header">
-                  <label class="field-label" for="todo-project-input">プロジェクト</label>
-                  <div class="field-actions">
-                    <button id="project-create-toggle" class="inline-link-btn" type="button">
-                      + 新しいプロジェクト
-                    </button>
-                    <button id="project-manager-button" class="inline-link-btn" type="button">
-                      プロジェクトを管理
-                    </button>
-                  </div>
+                  <label class="field-label" for="todo-project-trigger">プロジェクト</label>
                 </div>
                 <div id="todo-project-picker" class="project-picker">
-                  <div class="project-combobox">
-                    <input
-                      id="todo-project-input"
-                      class="project-combobox-input"
-                      type="text"
-                      placeholder="未設定"
-                      autocomplete="off"
-                      role="combobox"
-                      aria-autocomplete="list"
-                      aria-expanded="false"
-                      aria-controls="todo-project-options"
-                    />
-                    <button
-                      id="todo-project-clear"
-                      class="project-clear-btn hidden"
-                      type="button"
-                      aria-label="プロジェクトを解除"
-                    >
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
-                  </div>
-                  <div
-                    id="todo-project-options"
-                    class="project-options hidden"
-                    role="listbox"
-                    aria-label="プロジェクト候補"
-                  ></div>
-                  <p class="project-helper">未設定でも保存できます。候補を検索して1件だけ選択できます。</p>
-                </div>
-                <div id="project-quick-create" class="project-quick-create hidden">
-                  <div class="project-inline-form">
-                    <md-outlined-text-field id="project-name-input" placeholder="プロジェクト名"></md-outlined-text-field>
-                    <div class="project-inline-actions">
-                      <md-filled-button id="save-project-button" type="button">保存</md-filled-button>
-                      <md-text-button id="cancel-project-create" type="button">閉じる</md-text-button>
+                  <button
+                    id="todo-project-trigger"
+                    class="project-combobox"
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="todo-project-dropdown"
+                  >
+                    <span class="material-symbols-outlined project-combobox-icon" aria-hidden="true">folder_open</span>
+                    <span id="todo-project-display" class="project-combobox-value">プロジェクトなし</span>
+                    <span class="material-symbols-outlined project-combobox-arrow" aria-hidden="true">expand_more</span>
+                  </button>
+                  <div id="todo-project-dropdown" class="project-dropdown hidden">
+                    <div class="project-search-shell">
+                      <span class="material-symbols-outlined project-search-icon" aria-hidden="true">search</span>
+                      <input
+                        id="todo-project-search"
+                        class="project-search-input"
+                        type="text"
+                        placeholder="プロジェクトを検索"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div
+                      id="todo-project-options"
+                      class="project-options"
+                      role="listbox"
+                      aria-label="プロジェクト候補"
+                    ></div>
+                    <div class="project-dropdown-footer">
+                      <div class="project-dropdown-actions">
+                        <button id="project-create-action" class="project-dropdown-action" type="button">
+                          <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                          <span id="project-create-action-label">+ 新しいプロジェクトを作成</span>
+                        </button>
+                        <button id="project-manager-button" class="project-dropdown-action" type="button">
+                          <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                          <span>プロジェクトを管理</span>
+                        </button>
+                      </div>
+                      <div id="project-quick-create" class="project-quick-create hidden">
+                        <div class="project-inline-form">
+                          <input
+                            id="project-name-input"
+                            class="project-inline-input"
+                            type="text"
+                            placeholder="プロジェクト名"
+                            autocomplete="off"
+                          />
+                          <div class="project-inline-actions">
+                            <button id="save-project-button" class="secondary-btn secondary-btn-small" type="button">
+                              作成
+                            </button>
+                            <button id="cancel-project-create" class="inline-link-btn" type="button">キャンセル</button>
+                          </div>
+                        </div>
+                        <p id="project-validation-message" class="validation-message dialog-validation"></p>
+                      </div>
                     </div>
                   </div>
-                  <p id="project-validation-message" class="validation-message dialog-validation"></p>
                 </div>
               </div>
             </div>
 
+            <p class="datetime-note">
+              <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
+              日時は日本時間で設定されます。
+            </p>
+
             <div class="form-row two-col">
               <div class="form-field">
-                <label class="field-label" for="todo-due-date-trigger">締切日（JST）</label>
+                <label class="field-label" for="todo-due-date-trigger">締切日</label>
                 <button
                   id="todo-due-date-trigger"
                   type="button"
@@ -160,7 +179,11 @@
               </div>
               <div class="form-field">
                 <label class="field-label" for="todo-due-time">締切時刻（任意）</label>
-                <md-outlined-text-field id="todo-due-time" type="time"></md-outlined-text-field>
+                <div class="time-input-shell">
+                  <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
+                  <input id="todo-due-time" class="time-input-control" type="time" />
+                </div>
+                <p class="time-input-hint">時刻を選択</p>
               </div>
             </div>
 
@@ -171,7 +194,7 @@
               </summary>
               <div class="form-row two-col">
                 <div class="form-field">
-                  <label class="field-label" for="todo-start-date-trigger">開始予定日（JST）</label>
+                  <label class="field-label" for="todo-start-date-trigger">開始予定日</label>
                   <button
                     id="todo-start-date-trigger"
                     type="button"
@@ -187,7 +210,11 @@
                 </div>
                 <div class="form-field">
                   <label class="field-label" for="todo-start-time">開始時刻（任意）</label>
-                  <md-outlined-text-field id="todo-start-time" type="time"></md-outlined-text-field>
+                  <div class="time-input-shell">
+                    <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
+                    <input id="todo-start-time" class="time-input-control" type="time" />
+                  </div>
+                  <p class="time-input-hint">時刻を選択</p>
                 </div>
               </div>
 
