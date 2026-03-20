@@ -1255,10 +1255,30 @@ h2 {
 
 .todo-row-main {
   display: grid;
-  grid-template-columns: minmax(0, 2.8fr) minmax(180px, 1.3fr) minmax(160px, 1.2fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
   padding: 14px 16px;
+}
+
+.todo-row-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 2.8fr) minmax(180px, 1.3fr) minmax(160px, 1.2fr) auto;
+  gap: 16px;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 140ms ease;
+}
+
+.todo-row-summary:hover {
+  background: rgba(244, 248, 246, 0.92);
+}
+
+.todo-row-summary:focus-visible {
+  outline: 2px solid rgba(0, 92, 83, 0.28);
+  outline-offset: 2px;
 }
 
 .todo-cell {
@@ -1342,6 +1362,9 @@ h2 {
 }
 
 .todo-cell-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   justify-self: start;
 }
 
@@ -1351,14 +1374,16 @@ h2 {
   justify-content: flex-end;
   gap: 8px;
   min-width: max-content;
+  cursor: default;
 }
 
 .todo-row-menu {
   position: relative;
 }
 
-.todo-expand-btn {
-  min-width: 68px;
+.todo-row-chevron {
+  color: #607068;
+  font-size: 20px;
 }
 
 .icon-btn {
@@ -1648,19 +1673,26 @@ h2 {
   .todo-row-main {
     width: 100%;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "title actions"
-      "due status";
     align-items: start;
     gap: 12px;
   }
 
-  .todo-cell-title {
-    grid-area: title;
+  .todo-row-summary {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title status"
+      "due due";
+    align-items: start;
+    gap: 12px;
   }
 
   .todo-cell-context {
     display: none;
+  }
+
+  .todo-cell-title {
+    grid-area: title;
   }
 
   .todo-cell-due {
@@ -1673,7 +1705,6 @@ h2 {
   }
 
   .todo-cell-actions {
-    grid-area: actions;
     justify-self: end;
     min-width: 0;
   }

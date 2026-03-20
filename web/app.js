@@ -443,12 +443,6 @@ function bindEvents() {
       return;
     }
 
-    const expandButton = target.closest("button[data-expand-id]");
-    if (expandButton) {
-      toggleTodoDetails(Number(expandButton.dataset.expandId));
-      return;
-    }
-
     const statusButton = target.closest("button[data-status-id][data-next-status]");
     if (statusButton) {
       await setTodoStatus(
@@ -467,7 +461,25 @@ function bindEvents() {
     const deleteButton = target.closest("button[data-delete-id]");
     if (deleteButton) {
       promptDeleteTodo(Number(deleteButton.dataset.deleteId));
+      return;
     }
+
+    const rowToggle = target.closest("[data-row-toggle-id]");
+    if (rowToggle) {
+      toggleTodoDetails(Number(rowToggle.getAttribute("data-row-toggle-id")));
+    }
+  });
+
+  els.todoList.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const rowToggle = target.closest("[data-row-toggle-id]");
+    if (!rowToggle) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    toggleTodoDetails(Number(rowToggle.getAttribute("data-row-toggle-id")));
   });
 
   els.deleteConfirmDialog.addEventListener("close", () => {
@@ -1109,36 +1121,40 @@ function renderTodoRow(todo) {
   return `
     <article class="todo-row${isExpanded ? " is-expanded" : ""}${isEditing ? " is-editing" : ""}">
       <div class="todo-row-main">
-        <div class="todo-cell todo-cell-title">
-          <div class="todo-title-block">
-            <p class="todo-title-row">
-              <span class="todo-title">${escapeHtml(todo.title)}</span>
-              ${isEditing ? '<span class="todo-inline-badge">編集中</span>' : ""}
-            </p>
+        <div
+          class="todo-row-summary"
+          data-row-toggle-id="${todo.id}"
+          role="button"
+          tabindex="0"
+          aria-expanded="${isExpanded ? "true" : "false"}"
+          aria-controls="${detailsID}"
+          aria-label="${escapeHtml(`${todo.title}の詳細を${isExpanded ? "閉じる" : "開く"}`)}"
+        >
+          <div class="todo-cell todo-cell-title">
+            <div class="todo-title-block">
+              <p class="todo-title-row">
+                <span class="todo-title">${escapeHtml(todo.title)}</span>
+                ${isEditing ? '<span class="todo-inline-badge">編集中</span>' : ""}
+              </p>
+            </div>
           </div>
-        </div>
-        <div class="todo-cell todo-cell-context">
-          ${renderTodoContextSummary(todo)}
-        </div>
-        <div class="todo-cell todo-cell-due">
-          <div class="todo-due-block">
-            <p class="todo-due-main ${due.toneClass}">${escapeHtml(due.label)}</p>
-            ${due.subtext ? `<p class="todo-due-sub">${escapeHtml(due.subtext)}</p>` : ""}
+          <div class="todo-cell todo-cell-context">
+            ${renderTodoContextSummary(todo)}
           </div>
-        </div>
-        <div class="todo-cell todo-cell-status">
-          <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
+          <div class="todo-cell todo-cell-due">
+            <div class="todo-due-block">
+              <p class="todo-due-main ${due.toneClass}">${escapeHtml(due.label)}</p>
+              ${due.subtext ? `<p class="todo-due-sub">${escapeHtml(due.subtext)}</p>` : ""}
+            </div>
+          </div>
+          <div class="todo-cell todo-cell-status">
+            <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
+            <span class="material-symbols-outlined todo-row-chevron" aria-hidden="true">
+              ${isExpanded ? "expand_less" : "expand_more"}
+            </span>
+          </div>
         </div>
         <div class="todo-cell todo-cell-actions">
-          <button
-            type="button"
-            class="secondary-btn secondary-btn-small todo-expand-btn"
-            data-expand-id="${todo.id}"
-            aria-expanded="${isExpanded ? "true" : "false"}"
-            aria-controls="${detailsID}"
-          >
-            ${isExpanded ? "閉じる" : "詳細"}
-          </button>
           <div class="todo-row-menu">
             <button
               type="button"
