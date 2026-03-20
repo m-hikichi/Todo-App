@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "hotfix/**"
+      - "release/**"
+  pull_request:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: docker compose config
+
+      - name: Run tests in Docker
+        run: docker compose --profile test run --no-deps --rm todo-test
+
+      - name: Build runtime image
+        run: docker compose build todo-app
+
+      - name: Start app container
+        run: docker compose up -d todo-app
+
+      - name: Wait for health check
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs todo-app
+          exit 1
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down --volumes --remove-orphans

@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: todo_app:dev
     container_name: todo_app
     ports:
@@ -13,3 +14,20 @@ services:
       APP_DATA_DIR: "/app/data"
     volumes:
       - ./data:/app/data
+  todo-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test-runner
+    image: todo_app:test
+    profiles: ["test"]
+    working_dir: /src
+    command: ["go", "test", "./..."]
+    volumes:
+      - ./:/src
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+
+volumes:
+  go-mod-cache:
+  go-build-cache:

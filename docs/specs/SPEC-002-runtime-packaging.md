@@ -3,7 +3,7 @@ spec_id: SPEC-002
 title: Docker実行とWindows/macOSインストール配布の実行要件
 status: review
 created: 2026-03-07
-updated: 2026-03-14
+updated: 2026-03-20
 author: Codex
 related_specs: [SPEC-001]
 ---
@@ -28,13 +28,13 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 
 ## 機能仕様（実行・配布）
 - [ ] FR-001: アプリは`docker`または`desktop`の起動モードで開始できる。現行実装ではDocker/Webランタイムのみ提供し、`desktop`モードは未実装。
-- [x] FR-002: Dockerイメージにアプリバイナリと必要な実行アーティファクトを含め、`/`でブラウザUIを配信できる。
+- [x] FR-002: Dockerイメージにアプリバイナリと必要な実行アーティファクトを含め、`/`でブラウザUIを配信できる。現行実装では multi-stage Dockerfile の `runtime` ターゲットで軽量な実行イメージを生成する。
 - [ ] FR-003: Docker実行時は永続データディレクトリのマウントをサポートし、デスクトップ実行時はローカルデータディレクトリへ保存して、いずれもsqliteデータを再起動後に保持できる。現行実装ではDocker/Webランタイムでの`data_dir/todo.db`保持までは対応し、デスクトップモードは未実装。
 - [ ] FR-004: Windows向けにインストール可能な配布形式（例: installer + exe）を生成できる。
 - [ ] FR-005: macOS向けにインストール可能な配布形式（例: .app + .dmg）を生成できる。
 - [ ] FR-006: デスクトップモード起動時はアプリケーションウィンドウを表示し、外部ブラウザを必須としない。
 - [x] FR-007: Dockerモードでは`GET /healthz`を公開し、運用監視に利用できる。
-- [x] FR-008: `host`/`port`/`data_dir`の設定優先順位を「CLIフラグ > 環境変数 > デフォルト値」とする。
+- [x] FR-008: `host`/`port`/`data_dir`の設定優先順位を「CLIフラグ > 環境変数 > デフォルト値」とする。現行実装では Docker 実行時も `APP_HOST` / `APP_PORT` / `APP_DATA_DIR` を使って上書きできる。
 - [ ] FR-009: DockerモードとデスクトップモードでSPEC-001の中核挙動を同一に保つ。
 
 ### 優先度
@@ -56,8 +56,9 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 - [ ] NFR-003: Dockerイメージサイズ目標を150MB未満とする。
 - [x] NFR-004: 実行ログに起動モード、バインドアドレス、データパスを含める。
 - [ ] NFR-005: Windows/macOS配布物の作成手順をCIで自動実行可能にする。
-- [ ] NFR-006: ローカル実行時に`docker run` 1コマンドで起動できるように、必要な環境変数/ボリューム指定を最小化する。
+- [x] NFR-006: ローカル実行時に`docker run` 1コマンドで起動できるように、必要な環境変数/ボリューム指定を最小化する。現行実装では `docker build --target runtime ...` と `docker run ...`、または `docker compose up -d --build` だけでホストにGo/Nodeを入れず起動できる。
 - [ ] NFR-007: Windows/macOS配布物は必要ランタイムを同梱し、手動インストールなしで起動できる。
+- [x] NFR-008: CIではホストにGo/Nodeを前提とせず、Dockerベースでビルド・テスト・ヘルスチェックを自動実行できる。現行実装では GitHub Actions が `docker compose config`、`docker compose --profile test run --no-deps --rm todo-test`、`docker compose build todo-app`、`docker compose up -d todo-app` と `/healthz` 検証を実行する。
 
 ## データモデル
 
@@ -95,6 +96,7 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 | TC-010 | FR-003 | デスクトップモードで再起動後もsqliteデータが保持される | 結合テスト |
 | TC-011 | NFR-006 | ローカル実行時に`docker run` 1コマンドで起動できる | 運用テスト |
 | TC-012 | NFR-007 | クリーン環境のWindows/macOSで追加ランタイムなしに起動できる | 結合テスト |
+| TC-013 | NFR-008 | CI相当の手順で Docker ベースのテスト実行、実行イメージのビルド、`/healthz` の起動確認ができる | CI結合テスト |
 
 ## 依存関係
 | 依存先 | 種別 | 説明 |
@@ -112,3 +114,4 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 | 2026-03-07 | デスクトップ利用時は専用ウィンドウUIを標準とする | インストールアプリとしての利用体験を優先するため |
 | 2026-03-14 | 現行Webランタイムでは`data_dir/todo.db`へTodoを保存する | Dockerボリュームと将来のデスクトップローカル保存先を同じ責務で扱えるようにするため |
 | 2026-03-14 | 現行のDocker運用ではソース変更後に`docker compose up -d --build`での再ビルドを前提とする | 既存イメージ再利用時に最新コードが反映されない運用事故を避けるため |
+| 2026-03-20 | ローカル確認とCI検証はホストのGo/Nodeではなく Docker コンテナを正とする | 開発者環境差分を減らし、ローカルとCIの検証条件を一致させるため |
