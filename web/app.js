@@ -26,7 +26,7 @@ const STATUS_ORDER = ["active", "in_progress", "waiting", "completed"];
 const STATUS_LABELS = {
   active: "未着手",
   in_progress: "進行中",
-  waiting: "保留",
+  waiting: "待ち",
   completed: "完了",
 };
 
@@ -1053,6 +1053,28 @@ function beginEditing(todoId) {
   populateForm(todo);
   showValidation("");
   render();
+  scrollTodoFormIntoView();
+}
+
+function scrollTodoFormIntoView() {
+  const behavior = prefersReducedMotion() ? "auto" : "smooth";
+  window.requestAnimationFrame(() => {
+    els.createCollapsible.scrollIntoView({
+      behavior,
+      block: "start",
+      inline: "nearest",
+    });
+    focusTodoTitleField();
+  });
+}
+
+function focusTodoTitleField() {
+  if (typeof els.title.focus !== "function") return;
+  try {
+    els.title.focus({ preventScroll: true });
+  } catch {
+    els.title.focus();
+  }
 }
 
 function cancelEditing({ clearValidation = true, collapse = false } = {}) {
@@ -1458,6 +1480,10 @@ function extractProjectErrorMessage(error, fallback) {
 
 function getStatusText(status) {
   return STATUS_LABELS[status] || status;
+}
+
+function prefersReducedMotion() {
+  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function getRecurrenceText(recurrence) {
