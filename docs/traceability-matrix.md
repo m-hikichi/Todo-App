@@ -9,7 +9,7 @@
 | 要件ID | 仕様ID | 機能ID(FR) | 実装ファイル | 関数/クラス | テストファイル | ステータス |
 |--------|--------|------------|--------------|------------|----------------|-----------|
 | FC-01-01-001 | SPEC-001 | FR-001 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodos, CreateTodo, createTodo | internal/todo/store_test.go | ✅ |
-| FC-01-01-002 | SPEC-001 | FR-002 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodoByID, UpdateTodo, submitTodoForm, updateTodo, beginEditing | internal/todo/store_test.go, 手動確認（一覧の編集ボタンから保存） | ✅ |
+| FC-01-01-002 | SPEC-001 | FR-002 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodoByID, UpdateTodo, submitTodoForm, updateTodo, beginEditing, scrollTodoFormIntoView, focusTodoTitleField | internal/todo/store_test.go, 手動確認（一覧の編集ボタンでフォーム展開、編集エリアへスクロール、タイトル入力へフォーカスして保存） | ✅ |
 | FC-01-01-003 | SPEC-001 | FR-003 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodoByID, DeleteTodo, deleteTodo, promptDeleteTodo, confirmDeleteTodo | internal/todo/store_test.go, 手動確認（削除確認ダイアログの表示とキャンセル） | ✅ |
 | FC-01-01-001 | SPEC-001 | FR-004 | cmd/server/api.go, internal/todo/store.go, web/app.js | handleTodos, CreateTodo, createTodo | internal/todo/store_test.go | ✅ |
 | FC-01-02-001 | SPEC-001 | FR-005 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js, web/styles.css | handleTodos, ListTodos, renderTodoView, getVisibleTodos, getTodoHeadingText, renderTodoList | internal/todo/store_test.go, 手動確認（`すべて`タブで全件表示。デスクトップでは行型一覧、モバイルでは縦積み表示） | ✅ |
