@@ -231,6 +231,9 @@ function bindEvents() {
     toggleCalendarPopover("due", els.dueDateTrigger);
   });
 
+  bindTimeFieldPicker(els.startTime);
+  bindTimeFieldPicker(els.dueTime);
+
   els.calendarPrev.addEventListener("click", (event) => {
     event.preventDefault();
     state.calendar.viewMonth -= 1;
@@ -495,6 +498,28 @@ function bindEvents() {
     renderNotifications();
     closeDialog(els.settingsDialog);
   });
+}
+
+function bindTimeFieldPicker(input) {
+  const shell = input.closest(".time-input-shell");
+  if (!shell) return;
+
+  shell.addEventListener("click", () => {
+    openTimePicker(input);
+  });
+}
+
+function openTimePicker(input) {
+  input.focus({ preventScroll: true });
+  if (typeof input.showPicker !== "function") {
+    return;
+  }
+
+  try {
+    input.showPicker();
+  } catch (_error) {
+    // Some browsers restrict showPicker; focusing the input remains a safe fallback.
+  }
 }
 
 async function loadTodos() {
