@@ -32,6 +32,11 @@ const TODO_VIEW_DEFINITIONS = {
     copy: "未完了で、開始予定日時が到来したものと開始予定日未設定のものを表示します",
     empty: "今日やるTodoはありません。",
   },
+  upcoming: {
+    heading: "今後のTodo",
+    copy: "未完了で、開始予定日時がまだ未来のものを表示します",
+    empty: "今後のTodoはありません。",
+  },
   overdue: {
     heading: "期限切れのTodo",
     copy: "締切を過ぎた未完了Todoだけを表示します",
@@ -986,6 +991,9 @@ function getVisibleTodos(view = state.todoView) {
   if (view === "all") {
     return state.todos;
   }
+  if (view === "upcoming") {
+    return state.todos.filter((todo) => isTodoVisibleUpcoming(todo));
+  }
   if (view === "overdue") {
     return state.todos.filter((todo) => isTodoVisibleOverdue(todo));
   }
@@ -1000,6 +1008,13 @@ function isTodoVisibleToday(todo) {
     return false;
   }
   return isStartDateAvailableToday(todo);
+}
+
+function isTodoVisibleUpcoming(todo) {
+  if (!ACTIONABLE_TODAY_STATUSES.has(todo.status)) {
+    return false;
+  }
+  return isStartDateUpcoming(todo);
 }
 
 function isTodoVisibleOverdue(todo) {
@@ -1026,6 +1041,17 @@ function isStartDateAvailableToday(todo) {
     return false;
   }
   return startAt.getTime() <= Date.now();
+}
+
+function isStartDateUpcoming(todo) {
+  if (!todo.startDate) {
+    return false;
+  }
+  const startAt = parseDateTime(todo.startDate, "start");
+  if (Number.isNaN(startAt.getTime())) {
+    return false;
+  }
+  return startAt.getTime() > Date.now();
 }
 
 function getTodoCountText(visibleCount) {
