@@ -22,6 +22,7 @@ http://127.0.0.1:8080/healthz
 ```
 
 `compose.yaml` は `./data` を `/app/data` へマウントするので、コンテナ再作成後も Todo が残ります。
+コンテナ起動時に `APP_DATA_DIR` を自動作成し、初回起動や CI の bind mount でも SQLite を作成できるように権限を補正します。
 ホスト側に `go` や `node` は不要です。
 ソース変更後に `docker compose up -d` だけを実行すると、既存イメージが再利用されて新しいコードが反映されないことがあります。
 コード変更を反映したい場合は、必ず `docker compose up -d --build` を使ってください。
@@ -60,6 +61,7 @@ GitHub Actions は [ci.yml](./.github/workflows/ci.yml) で次を実行します
 2. `docker compose --profile test run --no-deps --rm todo-test` で Docker 内テスト
 3. `docker compose build todo-app` で本番イメージをビルド
 4. `docker compose up -d todo-app` で起動し `/healthz` を確認
+5. コンテナが異常終了した場合は、その時点でログを出して fail fast する
 
 CI でもホストに `go` / `node` を前提としません。
 

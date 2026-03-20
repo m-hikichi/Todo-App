@@ -18,6 +18,7 @@
 | FC-01-02-002 | SPEC-001 | FR-008 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js, web/styles.css | handleTodos, ListTodos, renderTodoView, getVisibleTodos, isTodoVisibleToday, isStartDateAvailableToday, renderTodoList | 手動確認（`今日`タブで未完了かつ開始予定日時到来済みのみ表示。completedと未来start_dateは非表示） | ✅ |
 | FC-01-02-003 | SPEC-001 | FR-022 | web/index.html, web/app.js, web/styles.css | renderTodoView, getVisibleTodos, isTodoVisibleOverdue, renderTodoList | 手動確認（`期限切れ`タブでdue_date超過かつ未完了のみ表示） | ✅ |
 | FC-01-02-004 | SPEC-001 | FR-023 | web/index.html, web/app.js, web/styles.css | renderTodoView, getVisibleTodos, isTodoVisibleCompleted, renderTodoList | 手動確認（`完了`タブでcompletedのみ表示） | ✅ |
+| FC-01-02-005 | SPEC-001 | FR-024 | web/index.html, web/app.js, web/styles.css | renderTodoView, getVisibleTodos, isTodoVisibleUpcoming, isStartDateUpcoming, renderTodoList | 手動確認（`今後`タブで未来start_dateを持つ未完了Todoのみ表示） | ✅ |
 | FC-02-01-002 | SPEC-001 | FR-009 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodos, handleTodoByID, CreateTodo, UpdateTodo, validateTodoValues, applyStoredDateTime, combineDateAndTime | internal/todo/store_test.go, 手動確認（作成/編集フォームで開始予定日を更新） | ✅ |
 | FC-02-01-001 | SPEC-001 | FR-010 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodos, handleTodoByID, CreateTodo, UpdateTodo, validateTodoValues, isValidStartDue, applyStoredDateTime | internal/todo/store_test.go, 手動確認（作成/編集フォームで締切日を更新） | ✅ |
 | FC-02-02-001 | SPEC-001 | FR-011 | cmd/server/api.go, internal/todo/store.go, web/index.html, web/app.js | handleTodos, handleTodoByID, CreateTodo, UpdateTodo, buildTodoFromForm, updateTodo, renderTodoList | internal/todo/store_test.go, 手動確認（担当者の入力・更新・解除） | ✅ |
@@ -34,11 +35,11 @@
 | FC-04-02-001 | SPEC-002 | FR-001 | Dockerfile, compose.yaml, cmd/server/main.go | main | 手動確認（Docker/Webランタイム起動。desktopは未実装） | 🔧 |
 | FC-04-02-002 | SPEC-002 | FR-001 | TBD | TBD | TBD | ❌ |
 | FC-04-02-001 | SPEC-002 | FR-002 | Dockerfile, compose.yaml, README.md, cmd/server/main.go | main | 手動確認（docker compose up -d --build で起動） | ✅ |
-| FC-04-01-001 | SPEC-002 | FR-003 | cmd/server/main.go, cmd/server/api.go, internal/todo/store.go, web/app.js, Dockerfile, compose.yaml | main, handleTodos, CreateTodo, ListTodos, DeleteTodo, loadTodos, Open | internal/todo/store_test.go, 手動確認（docker compose restart後も保持） | 🔧 |
+| FC-04-01-001 | SPEC-002 | FR-003 | cmd/server/main.go, cmd/server/api.go, internal/todo/store.go, web/app.js, Dockerfile, docker-entrypoint.sh, compose.yaml | main, handleTodos, CreateTodo, ListTodos, DeleteTodo, loadTodos, Open | internal/todo/store_test.go, 手動確認（freshなbind mountでも起動し、docker compose restart後も保持） | 🔧 |
 | FC-04-05-001 | SPEC-002 | FR-004 | TBD | TBD | TBD | ❌ |
 | FC-04-05-002 | SPEC-002 | FR-005 | TBD | TBD | TBD | ❌ |
 | FC-04-02-002 | SPEC-002 | FR-006 | TBD | TBD | TBD | ❌ |
 | FC-04-03-001 | SPEC-002 | FR-007 | cmd/server/main.go | main | 手動確認（GET /healthz） | ✅ |
 | FC-04-04-001 | SPEC-002 | FR-008 | cmd/server/main.go, Dockerfile, compose.yaml, README.md | envOrDefault, main | README手順と設定値で確認 | ✅ |
-| NF-007 | SPEC-002 | NFR-008 | Dockerfile, compose.yaml, README.md, .github/workflows/ci.yml | docker job | GitHub Actions workflow, 手動確認（Docker ベースでテスト・build・healthz 検証） | ✅ |
+| NF-007 | SPEC-002 | NFR-008 | Dockerfile, docker-entrypoint.sh, compose.yaml, README.md, .github/workflows/ci.yml | docker job | GitHub Actions workflow, 手動確認（Docker ベースでテスト・build・healthz 検証。異常終了時はログ出力でfail fast） | ✅ |
 | FC-04-06-001 | SPEC-002 | FR-009 | TBD | TBD | TBD | ❌ |

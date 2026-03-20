@@ -29,7 +29,7 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 ## 機能仕様（実行・配布）
 - [ ] FR-001: アプリは`docker`または`desktop`の起動モードで開始できる。現行実装ではDocker/Webランタイムのみ提供し、`desktop`モードは未実装。
 - [x] FR-002: Dockerイメージにアプリバイナリと必要な実行アーティファクトを含め、`/`でブラウザUIを配信できる。現行実装では multi-stage Dockerfile の `runtime` ターゲットで軽量な実行イメージを生成する。
-- [ ] FR-003: Docker実行時は永続データディレクトリのマウントをサポートし、デスクトップ実行時はローカルデータディレクトリへ保存して、いずれもsqliteデータを再起動後に保持できる。現行実装ではDocker/Webランタイムでの`data_dir/todo.db`保持までは対応し、デスクトップモードは未実装。
+- [ ] FR-003: Docker実行時は永続データディレクトリのマウントをサポートし、デスクトップ実行時はローカルデータディレクトリへ保存して、いずれもsqliteデータを再起動後に保持できる。現行実装ではDocker/Webランタイムで`APP_DATA_DIR`を起動時に自動作成し、bind mount 先が空でも書き込み可能な状態へ補正した上で`data_dir/todo.db`を保持する。デスクトップモードは未実装。
 - [ ] FR-004: Windows向けにインストール可能な配布形式（例: installer + exe）を生成できる。
 - [ ] FR-005: macOS向けにインストール可能な配布形式（例: .app + .dmg）を生成できる。
 - [ ] FR-006: デスクトップモード起動時はアプリケーションウィンドウを表示し、外部ブラウザを必須としない。
@@ -58,7 +58,7 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 - [ ] NFR-005: Windows/macOS配布物の作成手順をCIで自動実行可能にする。
 - [x] NFR-006: ローカル実行時に`docker run` 1コマンドで起動できるように、必要な環境変数/ボリューム指定を最小化する。現行実装では `docker build --target runtime ...` と `docker run ...`、または `docker compose up -d --build` だけでホストにGo/Nodeを入れず起動できる。
 - [ ] NFR-007: Windows/macOS配布物は必要ランタイムを同梱し、手動インストールなしで起動できる。
-- [x] NFR-008: CIではホストにGo/Nodeを前提とせず、Dockerベースでビルド・テスト・ヘルスチェックを自動実行できる。現行実装では GitHub Actions が `docker compose config`、`docker compose --profile test run --no-deps --rm todo-test`、`docker compose build todo-app`、`docker compose up -d todo-app` と `/healthz` 検証を実行する。
+- [x] NFR-008: CIではホストにGo/Nodeを前提とせず、Dockerベースでビルド・テスト・ヘルスチェックを自動実行できる。現行実装では GitHub Actions が `docker compose config`、`docker compose --profile test run --no-deps --rm todo-test`、`docker compose build todo-app`、`docker compose up -d todo-app` と `/healthz` 検証を実行し、コンテナ異常終了時はログを出して fail fast する。
 
 ## データモデル
 
@@ -115,3 +115,4 @@ DockerモードではブラウザUI、デスクトップモードではアプリ
 | 2026-03-14 | 現行Webランタイムでは`data_dir/todo.db`へTodoを保存する | Dockerボリュームと将来のデスクトップローカル保存先を同じ責務で扱えるようにするため |
 | 2026-03-14 | 現行のDocker運用ではソース変更後に`docker compose up -d --build`での再ビルドを前提とする | 既存イメージ再利用時に最新コードが反映されない運用事故を避けるため |
 | 2026-03-20 | ローカル確認とCI検証はホストのGo/Nodeではなく Docker コンテナを正とする | 開発者環境差分を減らし、ローカルとCIの検証条件を一致させるため |
+| 2026-03-20 | Dockerランタイムは起動時に`APP_DATA_DIR`を自動作成し、bind mount の所有権を補正してから非rootで起動する | GitHub Actions などの fresh checkout でも SQLite 初期化失敗を防ぐため |

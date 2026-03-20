@@ -36,6 +36,11 @@ jobs:
             if curl -fsS http://127.0.0.1:8080/healthz >/dev/null; then
               exit 0
             fi
+            status="$(docker inspect -f '{{.State.Status}}' todo_app 2>/dev/null || true)"
+            if [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
+              docker compose logs todo-app
+              exit 1
+            fi
             sleep 2
           done
           docker compose logs todo-app
