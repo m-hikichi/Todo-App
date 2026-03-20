@@ -17,10 +17,18 @@ CMD ["go", "test", "./..."]
 
 FROM go-base AS builder
 
+ARG TARGETOS
+ARG TARGETARCH
+
 COPY cmd ./cmd
 COPY internal ./internal
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/todo-server ./cmd/server
+# Build for the Docker target architecture.
+RUN set -eu; \
+  export CGO_ENABLED=1; \
+  if [ -n "${TARGETOS:-}" ]; then export GOOS="${TARGETOS}"; fi; \
+  if [ -n "${TARGETARCH:-}" ]; then export GOARCH="${TARGETARCH}"; fi; \
+  go build -trimpath -ldflags="-s -w" -o /out/todo-server ./cmd/server
 
 FROM alpine:3.20 AS runtime
 
