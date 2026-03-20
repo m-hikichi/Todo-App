@@ -8,6 +8,9 @@ const state = {
   projectSearch: "",
   projectPickerOpen: false,
   projectCreatorOpen: false,
+  todoView: "today",
+  expandedTodoId: null,
+  openTodoMenuId: null,
   notifications: [],
   calendar: {
     target: null,
@@ -22,6 +25,29 @@ const state = {
 };
 
 const STATUS_ORDER = ["active", "in_progress", "waiting", "completed"];
+const ACTIONABLE_TODAY_STATUSES = new Set(["active", "in_progress", "waiting"]);
+const TODO_VIEW_DEFINITIONS = {
+  today: {
+    heading: "今日やるTodo",
+    copy: "未完了で、開始予定日時が到来したものと開始予定日未設定のものを表示します",
+    empty: "今日やるTodoはありません。",
+  },
+  overdue: {
+    heading: "期限切れのTodo",
+    copy: "締切を過ぎた未完了Todoだけを表示します",
+    empty: "期限切れのTodoはありません。",
+  },
+  completed: {
+    heading: "完了したTodo",
+    copy: "完了済みのTodoだけをまとめて確認できます",
+    empty: "完了したTodoはありません。",
+  },
+  all: {
+    heading: "すべてのTodo",
+    copy: "状態や開始予定日時に関係なく、保存されているTodo全体を確認できます",
+    empty: "表示できるTodoはありません。",
+  },
+};
 
 const STATUS_LABELS = {
   active: "未着手",
@@ -86,6 +112,9 @@ const els = {
   notificationBadge: document.getElementById("notification-badge"),
   notificationPopover: document.getElementById("notification-popover"),
   notificationPopoverCount: document.getElementById("notification-popover-count"),
+  todoViewTabs: Array.from(document.querySelectorAll("[data-todo-view]")),
+  todoViewHeading: document.getElementById("todo-view-heading"),
+  todoViewCopy: document.getElementById("todo-view-copy"),
   todoList: document.getElementById("todo-list"),
   todoCount: document.getElementById("todo-count"),
   notificationList: document.getElementById("notification-list"),
@@ -251,6 +280,10 @@ function bindEvents() {
     if (!els.projectPicker.contains(target)) {
       closeProjectPicker();
     }
+
+    if (!(target instanceof Element) || !target.closest(".todo-row-menu")) {
+      closeTodoMenu();
+    }
   });
 
   document.addEventListener("keydown", (event) => {
@@ -258,8 +291,15 @@ function bindEvents() {
       closeNotificationPopover();
       closeCalendarPopover();
       closeProjectPicker();
+      closeTodoMenu();
     }
   });
+
+  for (const button of els.todoViewTabs) {
+    button.addEventListener("click", () => {
+      setTodoView(String(button.dataset.todoView || ""));
+    });
+  }
 
   els.form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -389,6 +429,18 @@ function bindEvents() {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    const menuButton = target.closest("button[data-menu-id]");
+    if (menuButton) {
+      toggleTodoMenu(Number(menuButton.dataset.menuId));
+      return;
+    }
+
+    const expandButton = target.closest("button[data-expand-id]");
+    if (expandButton) {
+      toggleTodoDetails(Number(expandButton.dataset.expandId));
+      return;
+    }
+
     const statusButton = target.closest("button[data-status-id][data-next-status]");
     if (statusButton) {
       await setTodoStatus(
@@ -405,8 +457,9 @@ function bindEvents() {
     }
 
     const deleteButton = target.closest("button[data-delete-id]");
-    if (!deleteButton) return;
-    promptDeleteTodo(Number(deleteButton.dataset.deleteId));
+    if (deleteButton) {
+      promptDeleteTodo(Number(deleteButton.dataset.deleteId));
+    }
   });
 
   els.deleteConfirmDialog.addEventListener("close", () => {
@@ -443,6 +496,7 @@ async function loadTodos() {
   const todos = await requestJSON("/api/todos");
   state.todos = Array.isArray(todos) ? todos.map(fromApiTodo) : [];
   syncEditingState();
+  syncTodoListState();
 }
 
 async function loadProjects() {
@@ -597,8 +651,10 @@ function promptDeleteTodo(id) {
     return;
   }
 
+  state.openTodoMenuId = null;
   state.pendingDeleteTodoId = todo.id;
   els.deleteConfirmMessage.textContent = `「${todo.title}」を削除します。削除すると元に戻せません。`;
+  renderTodoList();
   openDialog(els.deleteConfirmDialog);
 }
 
@@ -752,6 +808,7 @@ function render() {
   renderProjectField();
   renderProjectManagementList();
   renderParentOptions();
+  renderTodoView();
   renderTodoList();
   renderNotifications();
 }
@@ -875,59 +932,354 @@ function renderParentOptions() {
   els.parent.value = "";
 }
 
-function renderTodoList() {
-  const visible = state.todos;
+function renderTodoView() {
+  els.todoViewHeading.textContent = getTodoHeadingText();
+  els.todoViewCopy.textContent = getTodoHeadingCopy();
 
-  els.todoCount.textContent = `${visible.length}件`;
+  for (const button of els.todoViewTabs) {
+    const isActive = button.dataset.todoView === state.todoView;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    button.tabIndex = isActive ? 0 : -1;
+  }
+}
+
+function renderTodoList() {
+  const visible = getVisibleTodos();
+
+  els.todoCount.textContent = getTodoCountText(visible.length);
 
   if (visible.length === 0) {
-    els.todoList.innerHTML = `<p class="empty">一致するTodoはありません。</p>`;
+    els.todoList.innerHTML = `<p class="empty">${escapeHtml(getTodoEmptyMessage(state.todos.length))}</p>`;
     return;
   }
 
-  els.todoList.innerHTML = visible
-    .map((todo) => {
-      const metaChips = [
-        todo.startDate ? `<span class="meta-chip">開始 ${formatDateTimeForDisplay(todo.startDate)}</span>` : "",
-        todo.dueDate ? `<span class="meta-chip">期限 ${formatDateTimeForDisplay(todo.dueDate)}</span>` : "",
-        todo.assignee ? `<span class="meta-chip">担当 ${escapeHtml(todo.assignee)}</span>` : "",
-        todo.project ? `<span class="meta-chip">プロジェクト ${escapeHtml(todo.project.name)}</span>` : "",
-        todo.recurrence !== "none"
-          ? `<span class="meta-chip">繰り返し ${escapeHtml(getRecurrenceText(todo.recurrence))}</span>`
-          : "",
-        todo.parentTodoId ? `<span class="meta-chip">親タスク #${todo.parentTodoId}</span>` : "",
-      ]
-        .filter(Boolean)
-        .join("");
-      const isEditing = todo.id === state.editingTodoId;
-      const statusControlLabel = `${todo.title}の状態変更`;
-      return `
-        <article class="todo-card${isEditing ? " is-editing" : ""}">
-          <div class="todo-top">
-            <div class="todo-copy">
-              <h3 class="todo-title">${escapeHtml(todo.title)}</h3>
-              ${todo.description ? `<p class="todo-description">${escapeHtml(todo.description)}</p>` : ""}
-            </div>
-            <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
+  els.todoList.innerHTML = `
+    <div class="todo-table-header" aria-hidden="true">
+      <span>タイトル</span>
+      <span>プロジェクト / 親タスク</span>
+      <span>期限</span>
+      <span>ステータス</span>
+      <span>操作</span>
+    </div>
+    <div class="todo-table-body">
+      ${visible.map((todo) => renderTodoRow(todo)).join("")}
+    </div>
+  `;
+}
+
+function setTodoView(view) {
+  if (!Object.prototype.hasOwnProperty.call(TODO_VIEW_DEFINITIONS, view)) {
+    return;
+  }
+  if (state.todoView === view) {
+    return;
+  }
+  state.todoView = view;
+  state.expandedTodoId = null;
+  state.openTodoMenuId = null;
+  renderTodoView();
+  renderTodoList();
+}
+
+function getVisibleTodos(view = state.todoView) {
+  if (view === "all") {
+    return state.todos;
+  }
+  if (view === "overdue") {
+    return state.todos.filter((todo) => isTodoVisibleOverdue(todo));
+  }
+  if (view === "completed") {
+    return state.todos.filter((todo) => isTodoVisibleCompleted(todo));
+  }
+  return state.todos.filter((todo) => isTodoVisibleToday(todo));
+}
+
+function isTodoVisibleToday(todo) {
+  if (!ACTIONABLE_TODAY_STATUSES.has(todo.status)) {
+    return false;
+  }
+  return isStartDateAvailableToday(todo);
+}
+
+function isTodoVisibleOverdue(todo) {
+  if (todo.status === "completed" || !todo.dueDate) {
+    return false;
+  }
+  const dueAt = parseDateTime(todo.dueDate, "due");
+  if (Number.isNaN(dueAt.getTime())) {
+    return false;
+  }
+  return dueAt.getTime() < Date.now();
+}
+
+function isTodoVisibleCompleted(todo) {
+  return todo.status === "completed";
+}
+
+function isStartDateAvailableToday(todo) {
+  if (!todo.startDate) {
+    return true;
+  }
+  const startAt = parseDateTime(todo.startDate, "start");
+  if (Number.isNaN(startAt.getTime())) {
+    return false;
+  }
+  return startAt.getTime() <= Date.now();
+}
+
+function getTodoCountText(visibleCount) {
+  return `${visibleCount}件`;
+}
+
+function getTodoEmptyMessage(totalCount) {
+  if (totalCount === 0) {
+    return "Todoはまだありません。";
+  }
+  return getTodoViewConfig(state.todoView).empty;
+}
+
+function getTodoHeadingText() {
+  return getTodoViewConfig(state.todoView).heading;
+}
+
+function getTodoHeadingCopy() {
+  return getTodoViewConfig(state.todoView).copy;
+}
+
+function renderTodoRow(todo) {
+  const isExpanded = state.expandedTodoId === todo.id;
+  const isEditing = state.editingTodoId === todo.id;
+  const isMenuOpen = state.openTodoMenuId === todo.id;
+  const statusControlLabel = `${todo.title}の状態変更`;
+  const detailsID = `todo-details-${todo.id}`;
+  const due = getDuePresentation(todo);
+
+  return `
+    <article class="todo-row${isExpanded ? " is-expanded" : ""}${isEditing ? " is-editing" : ""}">
+      <div class="todo-row-main">
+        <div class="todo-cell todo-cell-title">
+          <div class="todo-title-block">
+            <p class="todo-title-row">
+              <span class="todo-title">${escapeHtml(todo.title)}</span>
+              ${isEditing ? '<span class="todo-inline-badge">編集中</span>' : ""}
+            </p>
           </div>
-          ${metaChips ? `<div class="todo-meta">${metaChips}</div>` : ""}
-          <div class="todo-actions">
-            <div class="todo-status-controls">
-              <div class="status-switcher" role="group" aria-label="${escapeHtml(statusControlLabel)}">
-                ${renderStatusButtons(todo.id, todo.status)}
-              </div>
-            </div>
-            <div class="todo-action-buttons">
-              <button class="secondary-btn" data-edit-id="${todo.id}" ${isEditing ? "disabled" : ""}>
-                ${isEditing ? "編集中" : "編集"}
-              </button>
-              <button class="danger-btn" data-delete-id="${todo.id}">削除</button>
+        </div>
+        <div class="todo-cell todo-cell-context">
+          ${renderTodoContextSummary(todo)}
+        </div>
+        <div class="todo-cell todo-cell-due">
+          <div class="todo-due-block">
+            <p class="todo-due-main ${due.toneClass}">${escapeHtml(due.label)}</p>
+            ${due.subtext ? `<p class="todo-due-sub">${escapeHtml(due.subtext)}</p>` : ""}
+          </div>
+        </div>
+        <div class="todo-cell todo-cell-status">
+          <span class="status-badge status-${todo.status}">${escapeHtml(getStatusText(todo.status))}</span>
+        </div>
+        <div class="todo-cell todo-cell-actions">
+          <button
+            type="button"
+            class="secondary-btn secondary-btn-small todo-expand-btn"
+            data-expand-id="${todo.id}"
+            aria-expanded="${isExpanded ? "true" : "false"}"
+            aria-controls="${detailsID}"
+          >
+            ${isExpanded ? "閉じる" : "詳細"}
+          </button>
+          <div class="todo-row-menu">
+            <button
+              type="button"
+              class="icon-btn"
+              data-menu-id="${todo.id}"
+              aria-haspopup="menu"
+              aria-expanded="${isMenuOpen ? "true" : "false"}"
+              aria-label="${escapeHtml(todo.title)}の操作メニュー"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
+            </button>
+            ${
+              isMenuOpen
+                ? `
+                  <div class="todo-menu" role="menu">
+                    <button type="button" class="todo-menu-item is-danger" data-delete-id="${todo.id}" role="menuitem">
+                      削除
+                    </button>
+                  </div>
+                `
+                : ""
+            }
+          </div>
+        </div>
+      </div>
+      <div id="${detailsID}" class="todo-row-details${isExpanded ? "" : " hidden"}">
+        <div class="todo-detail-grid">
+          <section class="todo-detail-block">
+            <p class="todo-detail-label">詳細</p>
+            ${
+              todo.description
+                ? `<p class="todo-detail-description">${escapeHtml(todo.description)}</p>`
+                : '<p class="todo-detail-description is-empty">説明はまだありません。</p>'
+            }
+          </section>
+          <section class="todo-detail-block">
+            <p class="todo-detail-label">補助情報</p>
+            <dl class="todo-detail-meta">
+              ${renderTodoDetailItem("期限", todo.dueDate ? formatDateTimeForDisplay(todo.dueDate) : "未設定", due.toneClass)}
+              ${renderTodoDetailItem("開始", todo.startDate ? formatDateTimeForDisplay(todo.startDate) : "未設定")}
+              ${renderTodoDetailItem("プロジェクト", todo.project ? todo.project.name : "なし")}
+              ${renderTodoDetailItem("親タスク", getParentTodoDisplay(todo.parentTodoId))}
+              ${renderTodoDetailItem("担当者", todo.assignee || "未設定")}
+              ${renderTodoDetailItem("繰り返し", getRecurrenceText(todo.recurrence))}
+            </dl>
+          </section>
+        </div>
+        <div class="todo-detail-footer">
+          <div class="todo-status-panel">
+            <p class="todo-detail-label">ステータス変更</p>
+            <div class="status-switcher" role="group" aria-label="${escapeHtml(statusControlLabel)}">
+              ${renderStatusButtons(todo.id, todo.status)}
             </div>
           </div>
-        </article>
-      `;
-    })
-    .join("");
+          <button class="secondary-btn detail-edit-btn" type="button" data-edit-id="${todo.id}" ${
+            isEditing ? "disabled" : ""
+          }>
+            ${isEditing ? "編集中" : "編集"}
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderTodoContextSummary(todo) {
+  const projectName = todo.project ? todo.project.name : "プロジェクト未設定";
+  const secondaryItems = [];
+  if (todo.parentTodoId) {
+    secondaryItems.push(`親 ${getParentTodoDisplay(todo.parentTodoId)}`);
+  }
+  if (todo.assignee) {
+    secondaryItems.push(`担当 ${todo.assignee}`);
+  }
+
+  return `
+    <div class="todo-context-lines">
+      <p class="todo-context-primary">${escapeHtml(projectName)}</p>
+      ${secondaryItems.length > 0 ? `<p class="todo-context-secondary">${escapeHtml(secondaryItems.join(" / "))}</p>` : ""}
+    </div>
+  `;
+}
+
+function renderTodoDetailItem(label, value, toneClass = "") {
+  return `
+    <div class="todo-detail-item">
+      <dt>${escapeHtml(label)}</dt>
+      <dd class="${toneClass}">${escapeHtml(value)}</dd>
+    </div>
+  `;
+}
+
+function getParentTodoDisplay(parentTodoId) {
+  if (!parentTodoId) {
+    return "なし";
+  }
+
+  const parentTodo = state.todos.find((todo) => todo.id === parentTodoId);
+  if (!parentTodo) {
+    return "不明な親タスク";
+  }
+
+  return parentTodo.title;
+}
+
+function getDuePresentation(todo) {
+  if (!todo.dueDate) {
+    return {
+      label: "期限未設定",
+      subtext: todo.startDate ? `開始 ${formatDateTimeForDisplay(todo.startDate)}` : "",
+      toneClass: "is-none",
+    };
+  }
+
+  const dueAt = parseDateTime(todo.dueDate, "due");
+  const formattedDue = formatDateTimeForDisplay(todo.dueDate);
+  if (Number.isNaN(dueAt.getTime())) {
+    return {
+      label: `期限 ${formattedDue}`,
+      subtext: todo.startDate ? `開始 ${formatDateTimeForDisplay(todo.startDate)}` : "",
+      toneClass: "is-none",
+    };
+  }
+
+  if (todo.status !== "completed" && dueAt.getTime() < Date.now()) {
+    return {
+      label: `期限超過 ${formattedDue}`,
+      subtext: "締切を過ぎています",
+      toneClass: "is-overdue",
+    };
+  }
+
+  if (todo.status === "completed") {
+    return {
+      label: `期限 ${formattedDue}`,
+      subtext: "完了済み",
+      toneClass: "is-completed",
+    };
+  }
+
+  if (toInputDate(dueAt) === toInputDate(new Date())) {
+    return {
+      label: `期限 ${formattedDue}`,
+      subtext: "今日が締切です",
+      toneClass: "is-due-today",
+    };
+  }
+
+  return {
+    label: `期限 ${formattedDue}`,
+    subtext: todo.startDate ? `開始 ${formatDateTimeForDisplay(todo.startDate)}` : "",
+    toneClass: "is-upcoming",
+  };
+}
+
+function toggleTodoDetails(todoID) {
+  if (!Number.isInteger(todoID)) {
+    return;
+  }
+  state.expandedTodoId = state.expandedTodoId === todoID ? null : todoID;
+  state.openTodoMenuId = null;
+  renderTodoList();
+}
+
+function toggleTodoMenu(todoID) {
+  if (!Number.isInteger(todoID)) {
+    return;
+  }
+  state.openTodoMenuId = state.openTodoMenuId === todoID ? null : todoID;
+  renderTodoList();
+}
+
+function closeTodoMenu() {
+  if (state.openTodoMenuId === null) {
+    return;
+  }
+  state.openTodoMenuId = null;
+  renderTodoList();
+}
+
+function syncTodoListState() {
+  const visibleTodoIDs = new Set(getVisibleTodos().map((todo) => todo.id));
+  if (!visibleTodoIDs.has(state.expandedTodoId)) {
+    state.expandedTodoId = null;
+  }
+  if (!visibleTodoIDs.has(state.openTodoMenuId)) {
+    state.openTodoMenuId = null;
+  }
+}
+
+function getTodoViewConfig(view) {
+  return TODO_VIEW_DEFINITIONS[view] || TODO_VIEW_DEFINITIONS.today;
 }
 
 function renderNotifications() {
@@ -1048,6 +1400,8 @@ function beginEditing(todoId) {
     return;
   }
 
+  state.expandedTodoId = todo.id;
+  state.openTodoMenuId = null;
   state.editingTodoId = todo.id;
   els.createCollapsible.open = true;
   populateForm(todo);

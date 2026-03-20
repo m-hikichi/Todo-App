@@ -32,7 +32,7 @@ func TestStorePersistsTodosAcrossReopen(t *testing.T) {
 	reopened := openTestStore(t, dataDir)
 	t.Cleanup(func() { _ = reopened.Close() })
 
-	todos, err := reopened.ListTodos(ctx, "all")
+	todos, err := reopened.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestDeleteTodoClearsChildParentReference(t *testing.T) {
 		t.Fatalf("DeleteTodo failed: %v", err)
 	}
 
-	todos, err := store.ListTodos(ctx, "all")
+	todos, err := store.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestUpdateTodoPersistsStatus(t *testing.T) {
 	reopened := openTestStore(t, dataDir)
 	t.Cleanup(func() { _ = reopened.Close() })
 
-	todos, err := reopened.ListTodos(ctx, "all")
+	todos, err := reopened.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestUpdateTodoPersistsEditableFields(t *testing.T) {
 	reopened := openTestStore(t, dataDir)
 	t.Cleanup(func() { _ = reopened.Close() })
 
-	todos, err := reopened.ListTodos(ctx, "all")
+	todos, err := reopened.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}
@@ -217,6 +217,85 @@ func TestUpdateTodoPersistsEditableFields(t *testing.T) {
 	}
 	if edited.ParentTodoID == nil || *edited.ParentTodoID != parent.ID {
 		t.Fatalf("expected edited parent id %d, got %v", parent.ID, edited.ParentTodoID)
+	}
+}
+
+func TestListTodosFiltersByKeywordInTitleAndDescription(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t, t.TempDir())
+	t.Cleanup(func() { _ = store.Close() })
+
+	milkTodo, err := store.CreateTodo(ctx, CreateInput{
+		Title:       "Buy milk",
+		Description: "2 liters for breakfast",
+		Status:      "active",
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo milkTodo failed: %v", err)
+	}
+	_, err = store.CreateTodo(ctx, CreateInput{
+		Title:       "Prepare slides",
+		Description: "Quarterly review deck",
+		Status:      "active",
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo slides failed: %v", err)
+	}
+
+	results, err := store.ListTodos(ctx, "all", "  MILK  ")
+	if err != nil {
+		t.Fatalf("ListTodos title search failed: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != milkTodo.ID {
+		t.Fatalf("expected only milk todo from title search, got %#v", results)
+	}
+
+	results, err = store.ListTodos(ctx, "all", "breakfast")
+	if err != nil {
+		t.Fatalf("ListTodos description search failed: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != milkTodo.ID {
+		t.Fatalf("expected only milk todo from description search, got %#v", results)
+	}
+}
+
+func TestListTodosFiltersByKeywordInAssigneeAndProject(t *testing.T) {
+	ctx := context.Background()
+	store := openTestStore(t, t.TempDir())
+	t.Cleanup(func() { _ = store.Close() })
+
+	project := mustCreateProject(t, store, ctx, "Home")
+	assigneeTodo, err := store.CreateTodo(ctx, CreateInput{
+		Title:    "Call Mika",
+		Status:   "active",
+		Assignee: "Mika",
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo assigneeTodo failed: %v", err)
+	}
+	projectTodo, err := store.CreateTodo(ctx, CreateInput{
+		Title:     "Buy detergent",
+		Status:    "waiting",
+		ProjectID: &project.ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateTodo projectTodo failed: %v", err)
+	}
+
+	results, err := store.ListTodos(ctx, "all", "mika")
+	if err != nil {
+		t.Fatalf("ListTodos assignee search failed: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != assigneeTodo.ID {
+		t.Fatalf("expected only assignee todo from assignee search, got %#v", results)
+	}
+
+	results, err = store.ListTodos(ctx, "waiting", "HOME")
+	if err != nil {
+		t.Fatalf("ListTodos project search failed: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != projectTodo.ID {
+		t.Fatalf("expected only project todo from project search, got %#v", results)
 	}
 }
 
@@ -282,7 +361,7 @@ func TestUpdateProjectRenamesTodoProjection(t *testing.T) {
 		t.Fatalf("unexpected projects after rename: %#v", projects)
 	}
 
-	todos, err := reopened.ListTodos(ctx, "all")
+	todos, err := reopened.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}
@@ -334,7 +413,7 @@ func TestDeleteProjectClearsTodoReference(t *testing.T) {
 		t.Fatalf("unexpected projects after delete: %#v", projects)
 	}
 
-	todos, err := reopened.ListTodos(ctx, "all")
+	todos, err := reopened.ListTodos(ctx, "all", "")
 	if err != nil {
 		t.Fatalf("ListTodos failed: %v", err)
 	}

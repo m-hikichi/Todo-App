@@ -186,11 +186,12 @@ CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 	return nil
 }
 
-func (s *Store) ListTodos(ctx context.Context, status string) ([]Todo, error) {
+func (s *Store) ListTodos(ctx context.Context, status string, keyword string) ([]Todo, error) {
 	status = strings.TrimSpace(status)
 	if status != "" && status != "all" && !isAllowedStatus(status) {
 		return nil, &ValidationError{Message: "status filter is invalid"}
 	}
+	keyword = strings.TrimSpace(keyword)
 
 	query := `
 SELECT t.id, t.title, t.description, t.status, t.start_date, t.due_date, t.assignee, t.project_id, t.recurrence_rule, t.parent_todo_id, t.created_at, t.updated_at,
@@ -198,10 +199,27 @@ SELECT t.id, t.title, t.description, t.status, t.start_date, t.due_date, t.assig
 FROM todos t
 LEFT JOIN projects p ON p.id = t.project_id
 `
+	whereClauses := []string{}
 	args := []any{}
 	if status != "" && status != "all" {
-		query += "WHERE t.status = ? "
+		whereClauses = append(whereClauses, "t.status = ?")
 		args = append(args, status)
+	}
+	if keyword != "" {
+		pattern := "%" + escapeLikePattern(keyword) + "%"
+		whereClauses = append(
+			whereClauses,
+			`(
+				t.title LIKE ? ESCAPE '\'
+				OR t.description LIKE ? ESCAPE '\'
+				OR t.assignee LIKE ? ESCAPE '\'
+				OR COALESCE(p.name, '') LIKE ? ESCAPE '\'
+			)`,
+		)
+		args = append(args, pattern, pattern, pattern, pattern)
+	}
+	if len(whereClauses) > 0 {
+		query += "WHERE " + strings.Join(whereClauses, " AND ") + " "
 	}
 	query += "ORDER BY t.created_at DESC, t.id DESC"
 
@@ -224,6 +242,15 @@ LEFT JOIN projects p ON p.id = t.project_id
 	}
 
 	return todos, nil
+}
+
+func escapeLikePattern(value string) string {
+	replacer := strings.NewReplacer(
+		`\`, `\\`,
+		`%`, `\%`,
+		`_`, `\_`,
+	)
+	return replacer.Replace(value)
 }
 
 func (s *Store) CreateTodo(ctx context.Context, input CreateInput) (Todo, error) {

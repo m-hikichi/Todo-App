@@ -18,7 +18,11 @@ type todoAPI struct {
 func (a *todoAPI) handleTodos(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		todos, err := a.store.ListTodos(r.Context(), r.URL.Query().Get("status"))
+		todos, err := a.store.ListTodos(
+			r.Context(),
+			r.URL.Query().Get("status"),
+			r.URL.Query().Get("q"),
+		)
 		if err != nil {
 			writeError(w, err)
 			return

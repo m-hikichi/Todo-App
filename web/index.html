@@ -287,11 +287,62 @@
       </section>
 
       <section class="panel">
-        <div class="todo-header">
-          <h2>Todo一覧</h2>
-          <span id="todo-count" class="count-pill"></span>
+        <div class="todo-view-switch" role="tablist" aria-label="Todo表示切り替え">
+          <button
+            id="todo-view-today"
+            class="todo-view-btn"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="todo-list"
+            data-todo-view="today"
+          >
+            今日
+          </button>
+          <button
+            id="todo-view-overdue"
+            class="todo-view-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="todo-list"
+            data-todo-view="overdue"
+          >
+            期限切れ
+          </button>
+          <button
+            id="todo-view-completed"
+            class="todo-view-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="todo-list"
+            data-todo-view="completed"
+          >
+            完了
+          </button>
+          <button
+            id="todo-view-all"
+            class="todo-view-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="todo-list"
+            data-todo-view="all"
+          >
+            すべて
+          </button>
         </div>
-        <div id="todo-list" class="stack"></div>
+        <div class="todo-header">
+          <div class="todo-heading">
+            <div class="todo-heading-line">
+              <h2 id="todo-view-heading">今日やるTodo</h2>
+              <span id="todo-count" class="count-pill"></span>
+            </div>
+            <p id="todo-view-copy" class="todo-heading-copy">表示したいビューを切り替えて確認できます</p>
+          </div>
+        </div>
+        <div id="todo-list" class="todo-list-region"></div>
       </section>
     </main>
 
