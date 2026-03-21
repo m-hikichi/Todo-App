@@ -997,13 +997,6 @@ function renderTodoList() {
   }
 
   els.todoList.innerHTML = `
-    <div class="todo-table-header" aria-hidden="true">
-      <span>タイトル</span>
-      <span>プロジェクト / 親タスク</span>
-      <span>期限</span>
-      <span>ステータス</span>
-      <span>操作</span>
-    </div>
     <div class="todo-table-body">
       ${visible.map((todo) => renderTodoRow(todo)).join("")}
     </div>
