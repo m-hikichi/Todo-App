@@ -1176,11 +1176,11 @@ function renderTodoRow(todo) {
       <div id="${detailsID}" class="todo-row-details${isExpanded ? "" : " hidden"}">
         <div class="todo-detail-grid">
           <section class="todo-detail-block">
-            <p class="todo-detail-label">詳細</p>
+            <p class="todo-detail-label">メモ</p>
             ${
               todo.description
                 ? `<p class="todo-detail-description">${escapeHtml(todo.description)}</p>`
-                : '<p class="todo-detail-description is-empty">説明はまだありません。</p>'
+                : '<p class="todo-detail-description is-empty">メモはまだありません。</p>'
             }
           </section>
           <section class="todo-detail-block">

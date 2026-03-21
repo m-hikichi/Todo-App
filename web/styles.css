@@ -711,20 +711,40 @@ h2 {
   color: #71867d;
 }
 
-.datetime-note {
-  margin: -2px 0 2px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(228, 239, 233, 0.74);
-  color: #36554b;
-  font-size: 12px;
-  font-weight: 700;
+.datetime-group {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(111, 127, 119, 0.22);
+  border-radius: 16px;
+  background: rgba(247, 250, 248, 0.92);
 }
 
-.datetime-note .material-symbols-outlined,
+.datetime-group-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.datetime-group-title,
+.datetime-group-note {
+  margin: 0;
+}
+
+.datetime-group-title {
+  color: #26483d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.datetime-group-note {
+  color: #73857d;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .time-input-icon {
   color: #29574a;
 }
@@ -1639,6 +1659,7 @@ h2 {
 
   .field-header,
   .field-actions,
+  .datetime-group-header,
   .project-dropdown-actions,
   .project-admin-row,
   .project-admin-actions,

@@ -73,15 +73,15 @@
                 <md-outlined-text-field
                   id="todo-title"
                   maxlength="120"
-                  placeholder="120文字以内"
+                  placeholder="例: 会議資料を作成する"
                   required
                 ></md-outlined-text-field>
               </div>
               <div class="form-field">
-                <label class="field-label" for="todo-description">説明</label>
+                <label class="field-label" for="todo-description">メモ（任意）</label>
                 <md-outlined-text-field
                   id="todo-description"
-                  placeholder="補足情報（任意）"
+                  placeholder="例: 会議前に確認したい論点を残す"
                 ></md-outlined-text-field>
               </div>
             </div>
@@ -156,65 +156,72 @@
               </div>
             </div>
 
-            <p class="datetime-note">
-              <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
-              日時は日本時間で設定されます。
-            </p>
-
-            <div class="form-row two-col">
-              <div class="form-field">
-                <label class="field-label" for="todo-due-date-trigger">締切日</label>
-                <button
-                  id="todo-due-date-trigger"
-                  type="button"
-                  class="date-trigger"
-                  data-date-target="due"
-                  aria-haspopup="dialog"
-                  aria-expanded="false"
-                >
-                  <span id="todo-due-date-display" class="date-display placeholder">日付を選択</span>
-                  <span class="material-symbols-outlined">calendar_month</span>
-                </button>
-                <input id="todo-due-date" type="hidden" />
+            <section class="datetime-group">
+              <div class="datetime-group-header">
+                <p class="datetime-group-title">締切</p>
+                <p class="datetime-group-note">日本時間</p>
               </div>
-              <div class="form-field">
-                <label class="field-label" for="todo-due-time">締切時刻（任意）</label>
-                <div class="time-input-shell">
-                  <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
-                  <input id="todo-due-time" class="time-input-control" type="time" />
+              <div class="form-row two-col">
+                <div class="form-field">
+                  <label class="field-label" for="todo-due-date-trigger">日付</label>
+                  <button
+                    id="todo-due-date-trigger"
+                    type="button"
+                    class="date-trigger"
+                    data-date-target="due"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                  >
+                    <span id="todo-due-date-display" class="date-display placeholder">日付を選択</span>
+                    <span class="material-symbols-outlined">calendar_month</span>
+                  </button>
+                  <input id="todo-due-date" type="hidden" />
+                </div>
+                <div class="form-field">
+                  <label class="field-label" for="todo-due-time">時刻（任意）</label>
+                  <div class="time-input-shell">
+                    <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
+                    <input id="todo-due-time" class="time-input-control" type="time" />
+                  </div>
                 </div>
               </div>
-            </div>
+            </section>
 
             <details id="todo-advanced-settings" class="advanced-settings">
               <summary class="advanced-summary">
                 <span>詳細設定</span>
                 <span class="material-symbols-outlined advanced-summary-icon">expand_more</span>
               </summary>
-              <div class="form-row two-col">
-                <div class="form-field">
-                  <label class="field-label" for="todo-start-date-trigger">開始予定日</label>
-                  <button
-                    id="todo-start-date-trigger"
-                    type="button"
-                    class="date-trigger"
-                    data-date-target="start"
-                    aria-haspopup="dialog"
-                    aria-expanded="false"
-                  >
-                    <span id="todo-start-date-display" class="date-display placeholder">日付を選択</span>
-                    <span class="material-symbols-outlined">calendar_month</span>
-                  </button>
-                  <input id="todo-start-date" type="hidden" />
+              <section class="datetime-group">
+                <div class="datetime-group-header">
+                  <p class="datetime-group-title">開始予定</p>
+                  <p class="datetime-group-note">日本時間</p>
                 </div>
-                <div class="form-field">
-                  <label class="field-label" for="todo-start-time">開始時刻（任意）</label>
-                  <div class="time-input-shell">
-                    <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
-                    <input id="todo-start-time" class="time-input-control" type="time" />
+                <div class="form-row two-col">
+                  <div class="form-field">
+                    <label class="field-label" for="todo-start-date-trigger">日付</label>
+                    <button
+                      id="todo-start-date-trigger"
+                      type="button"
+                      class="date-trigger"
+                      data-date-target="start"
+                      aria-haspopup="dialog"
+                      aria-expanded="false"
+                    >
+                      <span id="todo-start-date-display" class="date-display placeholder">日付を選択</span>
+                      <span class="material-symbols-outlined">calendar_month</span>
+                    </button>
+                    <input id="todo-start-date" type="hidden" />
+                  </div>
+                  <div class="form-field">
+                    <label class="field-label" for="todo-start-time">時刻（任意）</label>
+                    <div class="time-input-shell">
+                      <span class="material-symbols-outlined time-input-icon" aria-hidden="true">schedule</span>
+                      <input id="todo-start-time" class="time-input-control" type="time" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </section>
 
               <div class="form-row two-col">
                 <div class="form-field">
