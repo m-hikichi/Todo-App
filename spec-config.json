@@ -9,5 +9,12 @@
     "naming": "Go: MixedCaps, JS: camelCase",
     "test_framework": "go test",
     "directory_structure": "cmd/ for entrypoints, internal/ for app logic, web/ for static files"
+  },
+  "implementation_roots": ["cmd", "internal", "web"],
+  "verification": {
+    "consistency_runner": "docker",
+    "project_test_commands": [
+      "docker compose --profile test run --no-deps --rm todo-test"
+    ]
   }
 }

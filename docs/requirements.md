@@ -116,7 +116,7 @@ Docker利用時はブラウザUI、デスクトップアプリ利用時は専用
 | FC-04-02-001 | DockerでブラウザUI配信 | SPEC-002 / FR-001, FR-002 |
 | FC-04-03-001 | ヘルスチェック提供 | SPEC-002 / FR-007 |
 | FC-04-04-001 | host/port/data path設定 | SPEC-002 / FR-008 |
-| FC-04-02-002 | デスクトップウィンドウ操作 | SPEC-001 / FR-016, SPEC-002 / FR-001, FR-006 |
+| FC-04-02-002 | デスクトップウィンドウ操作 | SPEC-001 / FR-016, SPEC-002 / FR-001, SPEC-002 / FR-006 |
 | FC-04-05-001 | Windows配布形式 | SPEC-002 / FR-004 |
 | FC-04-05-002 | macOS配布形式 | SPEC-002 / FR-005 |
 | FC-04-06-001 | Docker/Desktop挙動一致 | SPEC-001 / FR-017, SPEC-002 / FR-009 |

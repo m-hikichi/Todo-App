@@ -6,3 +6,4 @@ dist/
 *.app
 .DS_Store
 data/
+.claude
