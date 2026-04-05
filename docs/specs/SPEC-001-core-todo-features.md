@@ -3,7 +3,7 @@ spec_id: SPEC-001
 title: Todo基本機能とクライアントUI（Web/デスクトップ）
 status: review
 created: 2026-03-07
-updated: 2026-03-21
+updated: 2026-04-05
 author: Codex
 related_specs: [SPEC-002]
 ---
@@ -106,6 +106,190 @@ DockerモードではブラウザUI、デスクトップアプリモードでは
 | FR-018 | 必須 | 期限管理 |
 | FR-019 | 必須 | 定期タスク運用 |
 | FR-020 | 必須 | バックアップ/復元 |
+
+## 実装トレーサビリティ契約
+
+| 機能ID | 実装ファイル | シンボル種別 | シンボル名 | テストファイル | テストID | 備考 |
+|--------|--------------|--------------|------------|----------------|----------|------|
+| FR-001 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-001 | Todo作成APIハンドラ |
+| FR-001 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-001 | Todo作成ストア処理 |
+| FR-001 | web/app.js | function | createTodo | 手動確認 | TC-001, TC-047 | クライアント側作成処理 |
+| FR-002 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-002, TC-040 | Todo更新APIハンドラ |
+| FR-002 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-002 | Todo更新ストア処理 |
+| FR-002 | web/app.js | function | submitTodoForm | 手動確認 | TC-002, TC-040 | フォーム送信処理 |
+| FR-002 | web/app.js | function | updateTodo | 手動確認 | TC-002 | クライアント側更新処理 |
+| FR-002 | web/app.js | function | beginEditing | 手動確認 | TC-040 | 編集モード開始 |
+| FR-002 | web/app.js | function | scrollTodoFormIntoView | 手動確認 | TC-040 | 編集フォームへスクロール |
+| FR-002 | web/app.js | function | focusTodoTitleField | 手動確認 | TC-040 | タイトル入力へフォーカス |
+| FR-003 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-003, TC-034 | Todo削除APIハンドラ |
+| FR-003 | internal/todo/store.go | function | DeleteTodo | internal/todo/store_test.go | TC-003 | Todo削除ストア処理 |
+| FR-003 | web/app.js | function | deleteTodo | 手動確認 | TC-003 | クライアント側削除処理 |
+| FR-003 | web/app.js | function | promptDeleteTodo | 手動確認 | TC-034 | 削除確認ダイアログ表示 |
+| FR-003 | web/app.js | function | confirmDeleteTodo | 手動確認 | TC-003, TC-034 | 削除確認後実行 |
+| FR-004 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-004, TC-005 | バリデーション付き作成ハンドラ |
+| FR-004 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-004, TC-005 | タイトルバリデーション |
+| FR-004 | web/app.js | function | createTodo | 手動確認 | TC-004, TC-005 | クライアント側バリデーション |
+| FR-005 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-006 | 一覧取得APIハンドラ |
+| FR-005 | internal/todo/store.go | function | ListTodos | internal/todo/store_test.go | TC-006 | 一覧取得ストア処理 |
+| FR-005 | web/app.js | function | renderTodoView | 手動確認 | TC-006, TC-039, TC-045, TC-046 | ビュー描画 |
+| FR-005 | web/app.js | function | getVisibleTodos | 手動確認 | TC-006 | 表示対象フィルタリング |
+| FR-005 | web/app.js | function | getTodoHeadingText | 手動確認 | TC-006 | 見出しテキスト生成 |
+| FR-005 | web/app.js | function | renderTodoList | 手動確認 | TC-006, TC-039, TC-046 | 一覧描画 |
+| FR-005 | web/app.js | function | renderTodoRow | 手動確認 | TC-045, TC-046 | 行描画 |
+| FR-005 | web/app.js | function | toggleTodoDetails | 手動確認 | TC-045 | 詳細開閉 |
+| FR-006 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-008, TC-009, TC-010, TC-011, TC-012 | 状態変更APIハンドラ |
+| FR-006 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-008, TC-009, TC-010, TC-011, TC-012 | 状態変更ストア処理 |
+| FR-006 | web/app.js | function | patchTodo | 手動確認 | TC-008, TC-038 | クライアント側パッチ処理 |
+| FR-006 | web/app.js | function | setTodoStatus | 手動確認 | TC-038 | 状態設定 |
+| FR-006 | web/app.js | function | renderStatusButtons | 手動確認 | TC-038 | 状態変更UI描画 |
+| FR-006 | web/app.js | function | getStatusText | 手動確認 | TC-038 | 状態テキスト取得 |
+| FR-007 | cmd/server/api.go | handler | handleTodos | 手動確認 | TC-007 | 絞り込みAPIハンドラ |
+| FR-007 | internal/todo/store.go | function | ListTodos | 手動確認 | TC-007 | 絞り込みストア処理 |
+| FR-008 | cmd/server/api.go | handler | handleTodos | 手動確認 | TC-024, TC-025 | 今日表示APIハンドラ |
+| FR-008 | internal/todo/store.go | function | ListTodos | 手動確認 | TC-024, TC-025 | 今日表示ストア処理 |
+| FR-008 | web/app.js | function | renderTodoView | 手動確認 | TC-024, TC-025, TC-049 | 今日ビュー描画 |
+| FR-008 | web/app.js | function | getVisibleTodos | 手動確認 | TC-024, TC-025 | 今日フィルタ |
+| FR-008 | web/app.js | function | isTodoVisibleToday | 手動確認 | TC-024, TC-025 | 当日表示判定 |
+| FR-008 | web/app.js | function | isStartDateAvailableToday | 手動確認 | TC-024, TC-025 | 開始日到来判定 |
+| FR-009 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-016, TC-044 | 開始予定日設定APIハンドラ |
+| FR-009 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-016 | 開始予定日更新APIハンドラ |
+| FR-009 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-016 | 開始予定日作成処理 |
+| FR-009 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-016 | 開始予定日更新処理 |
+| FR-009 | internal/todo/store.go | function | validateTodoValues | internal/todo/store_test.go | TC-016 | 日時バリデーション |
+| FR-009 | web/app.js | function | applyStoredDateTime | 手動確認 | TC-016 | 保存日時の反映 |
+| FR-009 | web/app.js | function | combineDateAndTime | 手動確認 | TC-016 | 日付と時刻の結合 |
+| FR-009 | web/app.js | function | bindTimeFieldPicker | 手動確認 | TC-044, TC-048 | 時刻入力バインド |
+| FR-009 | web/app.js | function | openTimePicker | 手動確認 | TC-044, TC-048 | タイムピッカー起動 |
+| FR-010 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-013, TC-044 | 締切設定APIハンドラ |
+| FR-010 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-013 | 締切更新APIハンドラ |
+| FR-010 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-013 | 締切作成処理 |
+| FR-010 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-013 | 締切更新処理 |
+| FR-010 | internal/todo/store.go | function | validateTodoValues | internal/todo/store_test.go | TC-013 | 日時バリデーション |
+| FR-010 | web/app.js | function | applyStoredDateTime | 手動確認 | TC-013 | 保存日時の反映 |
+| FR-010 | web/app.js | function | bindTimeFieldPicker | 手動確認 | TC-044, TC-048 | 時刻入力バインド |
+| FR-010 | web/app.js | function | openTimePicker | 手動確認 | TC-044, TC-048 | タイムピッカー起動 |
+| FR-011 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-014 | 担当者設定APIハンドラ |
+| FR-011 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-014 | 担当者更新APIハンドラ |
+| FR-011 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-014 | 担当者作成処理 |
+| FR-011 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-014 | 担当者更新処理 |
+| FR-011 | web/app.js | function | buildTodoFromForm | 手動確認 | TC-014 | フォームからTodo構築 |
+| FR-011 | web/app.js | function | updateTodo | 手動確認 | TC-014 | クライアント側更新処理 |
+| FR-011 | web/app.js | function | renderTodoList | 手動確認 | TC-014 | 担当者表示 |
+| FR-012 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-015 | プロジェクト紐づけAPIハンドラ |
+| FR-012 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-015 | プロジェクト更新APIハンドラ |
+| FR-012 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-015 | プロジェクト紐づけ作成処理 |
+| FR-012 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-015 | プロジェクト紐づけ更新処理 |
+| FR-012 | internal/todo/store.go | function | ensureProjectReference | internal/todo/store_test.go | TC-015 | プロジェクト参照確認 |
+| FR-012 | web/app.js | function | buildTodoFromForm | 手動確認 | TC-015 | フォームからTodo構築 |
+| FR-012 | web/app.js | function | openProjectPicker | 手動確認 | TC-015 | プロジェクトピッカー表示 |
+| FR-012 | web/app.js | function | getFilteredProjects | 手動確認 | TC-015 | プロジェクト検索フィルタ |
+| FR-012 | web/app.js | function | selectProjectByID | 手動確認 | TC-015 | プロジェクト選択 |
+| FR-012 | web/app.js | function | renderProjectField | 手動確認 | TC-015 | プロジェクト欄描画 |
+| FR-012 | web/app.js | function | renderProjectOptions | 手動確認 | TC-015 | プロジェクト候補描画 |
+| FR-013 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-017 | 親子設定APIハンドラ |
+| FR-013 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-017 | 親子更新APIハンドラ |
+| FR-013 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-017 | 親子設定作成処理 |
+| FR-013 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-017 | 親子設定更新処理 |
+| FR-013 | internal/todo/store.go | function | validateParentReference | internal/todo/store_test.go | TC-017 | 親参照検証 |
+| FR-013 | web/app.js | function | renderParentOptions | 手動確認 | TC-017 | 親タスク候補描画 |
+| FR-013 | web/app.js | function | updateTodo | 手動確認 | TC-017 | クライアント側更新処理 |
+| FR-013 | web/app.js | function | renderTodoList | 手動確認 | TC-017 | 親タスク名表示 |
+| FR-013 | web/app.js | function | getParentTodoDisplay | 手動確認 | TC-017 | 親タスク表示名取得 |
+| FR-014 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-018, TC-019, TC-020 | 循環防止APIハンドラ |
+| FR-014 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-018, TC-019 | 循環防止更新処理 |
+| FR-014 | internal/todo/store.go | function | DeleteTodo | internal/todo/store_test.go | TC-020 | 親削除時の子更新 |
+| FR-014 | internal/todo/store.go | function | validateParentReference | internal/todo/store_test.go | TC-018, TC-019 | 循環/自己参照検証 |
+| FR-014 | web/app.js | function | renderParentOptions | 手動確認 | TC-018 | 自己除外の親候補描画 |
+| FR-014 | web/app.js | function | deleteTodo | 手動確認 | TC-020 | 削除後の親子解除 |
+| FR-015 | web/app.js | function | submitTodoForm | 手動確認 | TC-023, TC-036, TC-037 | フォーム送信処理 |
+| FR-015 | web/app.js | function | createTodo | 手動確認 | TC-023, TC-037 | 即時反映の作成処理 |
+| FR-015 | web/app.js | function | updateTodo | 手動確認 | TC-023, TC-037 | 即時反映の更新処理 |
+| FR-015 | web/app.js | function | clearForm | 手動確認 | TC-036 | フォームクリア |
+| FR-015 | web/app.js | function | deleteTodo | 手動確認 | TC-023 | 即時反映の削除処理 |
+| FR-015 | web/app.js | function | patchTodo | 手動確認 | TC-023 | 即時反映のパッチ処理 |
+| FR-015 | web/app.js | function | loadTodos | 手動確認 | TC-023 | Todo読み込み |
+| FR-015 | web/app.js | function | render | 手動確認 | TC-023 | 全体描画 |
+| FR-015 | web/app.js | function | updateFormMode | 手動確認 | TC-036 | フォームモード切替 |
+| FR-015 | web/app.js | function | cancelEditing | 手動確認 | TC-036 | 編集キャンセル |
+| FR-015 | web/app.js | function | syncCreateSummary | 手動確認 | TC-035 | 入力途中サマリ同期 |
+| FR-015 | web/app.js | function | buildFormPreview | 手動確認 | TC-035 | フォームプレビュー構築 |
+| FR-016 | TBD | TBD | TBD | TBD | TC-021 | デスクトップアプリ未実装 |
+| FR-017 | TBD | TBD | TBD | TBD | TC-022 | Docker/Desktop挙動一致未実装 |
+| FR-018 | web/app.js | function | renderNotifications | 手動確認 | TC-026, TC-027 | 通知描画 |
+| FR-018 | web/app.js | function | updateNotificationBadge | 手動確認 | TC-026, TC-027 | 通知バッジ更新 |
+| FR-018 | web/app.js | function | bindEvents | 手動確認 | TC-026, TC-027 | イベントバインド |
+| FR-019 | web/app.js | function | createNextRecurringTodo | 手動確認 | TC-028, TC-029 | 繰り返しTodo生成 |
+| FR-020 | TBD | TBD | TBD | TBD | TC-030, TC-031 | バックアップ未実装 |
+| FR-021 | cmd/server/api.go | handler | handleProjects | internal/todo/store_test.go | TC-032, TC-033 | プロジェクトAPIハンドラ |
+| FR-021 | cmd/server/api.go | handler | handleProjectByID | internal/todo/store_test.go | TC-033 | プロジェクト個別APIハンドラ |
+| FR-021 | internal/todo/projects.go | function | CreateProject | internal/todo/store_test.go | TC-032 | プロジェクト作成処理 |
+| FR-021 | internal/todo/projects.go | function | UpdateProject | internal/todo/store_test.go | TC-033 | プロジェクト更新処理 |
+| FR-021 | internal/todo/projects.go | function | DeleteProject | internal/todo/store_test.go | TC-033 | プロジェクト削除処理 |
+| FR-021 | internal/todo/projects.go | function | ListProjects | internal/todo/store_test.go | TC-032 | プロジェクト一覧取得 |
+| FR-021 | web/app.js | function | loadProjects | 手動確認 | TC-032, TC-033 | プロジェクト読み込み |
+| FR-021 | web/app.js | function | openProjectCreator | 手動確認 | TC-032 | プロジェクト作成UI表示 |
+| FR-021 | web/app.js | function | syncProjectCreateAction | 手動確認 | TC-032 | 作成アクション同期 |
+| FR-021 | web/app.js | function | submitProjectCreator | 手動確認 | TC-032 | プロジェクト作成送信 |
+| FR-021 | web/app.js | function | submitProjectEditor | 手動確認 | TC-033 | プロジェクト編集送信 |
+| FR-021 | web/app.js | function | deleteProject | 手動確認 | TC-033 | プロジェクト削除処理 |
+| FR-021 | web/app.js | function | renderProjectManagementList | 手動確認 | TC-033 | プロジェクト管理一覧描画 |
+| FR-022 | web/app.js | function | renderTodoView | 手動確認 | TC-041 | 期限切れビュー描画 |
+| FR-022 | web/app.js | function | getVisibleTodos | 手動確認 | TC-041 | 期限切れフィルタ |
+| FR-022 | web/app.js | function | isTodoVisibleOverdue | 手動確認 | TC-041 | 期限切れ判定 |
+| FR-022 | web/app.js | function | renderTodoList | 手動確認 | TC-041 | 期限切れ一覧描画 |
+| FR-023 | web/app.js | function | renderTodoView | 手動確認 | TC-042 | 完了ビュー描画 |
+| FR-023 | web/app.js | function | getVisibleTodos | 手動確認 | TC-042 | 完了フィルタ |
+| FR-023 | web/app.js | function | isTodoVisibleCompleted | 手動確認 | TC-042 | 完了判定 |
+| FR-023 | web/app.js | function | renderTodoList | 手動確認 | TC-042 | 完了一覧描画 |
+| FR-024 | web/app.js | function | renderTodoView | 手動確認 | TC-043 | 今後ビュー描画 |
+| FR-024 | web/app.js | function | getVisibleTodos | 手動確認 | TC-043 | 今後フィルタ |
+| FR-024 | web/app.js | function | isTodoVisibleUpcoming | 手動確認 | TC-043 | 今後判定 |
+| FR-024 | web/app.js | function | isStartDateUpcoming | 手動確認 | TC-043 | 将来開始日判定 |
+| FR-024 | web/app.js | function | renderTodoList | 手動確認 | TC-043 | 今後一覧描画 |
+| NFR-001 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-090, TC-091, TC-092 | 応答時間計測対象 |
+| NFR-001 | internal/todo/store.go | function | ListTodos | internal/todo/store_test.go | TC-090, TC-091 | 一覧取得性能 |
+| NFR-002 | internal/todo/store.go | function | CreateTodo | internal/todo/store_test.go | TC-093, TC-094, TC-095 | トランザクション保証 |
+| NFR-002 | internal/todo/store.go | function | UpdateTodo | internal/todo/store_test.go | TC-093, TC-094 | トランザクション保証 |
+| NFR-002 | internal/todo/store.go | function | DeleteTodo | internal/todo/store_test.go | TC-093, TC-094 | トランザクション保証 |
+| NFR-003 | cmd/server/api.go | handler | handleTodos | internal/todo/store_test.go | TC-096, TC-097 | サーバー側バリデーション |
+| NFR-003 | cmd/server/api.go | handler | handleTodoByID | internal/todo/store_test.go | TC-096, TC-097 | サーバー側バリデーション |
+| NFR-003 | web/app.js | function | createTodo | 手動確認 | TC-098 | XSSエスケープ確認 |
+| NFR-004 | TBD | TBD | TBD | TBD | TC-099, TC-100, TC-101 | デスクトップ未実装 |
+| NFR-005 | TBD | TBD | TBD | TBD | TC-102, TC-103, TC-104 | デスクトップ未実装 |
+
+## 実装完了条件
+
+| 機能ID | 観測可能な結果 | テストID | 自動化 | 備考 |
+|--------|----------------|----------|--------|------|
+| FR-001 | title必須・description任意でPOST /api/todosが201を返しTodoが永続化される | TC-001 | yes | 単体テスト |
+| FR-002 | PATCH /api/todos/{id}でタイトルとメモが更新され、編集ボタンからフォーム展開・スクロール・フォーカスが行われる | TC-002, TC-040 | yes/manual | 単体テスト+UI手動確認 |
+| FR-003 | 削除確認ダイアログで確認後にDELETE /api/todos/{id}が実行され項目が消える。キャンセル時は項目が残る | TC-003, TC-034 | yes/manual | 単体テスト+UI手動確認 |
+| FR-004 | 空タイトルで400エラー、121文字以上のタイトルで400エラーが返る | TC-004, TC-005 | yes | 単体テスト |
+| FR-005 | 「すべて」タブで全Todoが新しい順に一覧表示され、デスクトップ幅では行型レイアウト、モバイル幅では縦積みカード表示になる | TC-006, TC-039, TC-045, TC-046 | yes/manual | 単体テスト+UI手動確認 |
+| FR-006 | 詳細展開内の4状態セグメントコントロールからactive/in_progress/waiting/completed間で状態変更できる | TC-008, TC-009, TC-010, TC-011, TC-012, TC-038 | yes/manual | 単体テスト+UI手動確認 |
+| FR-007 | GET /api/todos?status=active等で該当状態のTodoのみが返る | TC-007 | manual | UIフィルター未実装 |
+| FR-008 | 「今日」タブでactive/in_progress/waitingかつstart_date到来済みまたは未設定のTodoのみ表示され、completedと未来start_dateは非表示 | TC-024, TC-025, TC-049, TC-105 | manual | UI手動確認 |
+| FR-009 | 作成/編集フォームでstart_dateをJST日時で設定・更新・解除でき、時刻入力枠クリックでタイムピッカーが開く | TC-016, TC-044 | yes/manual | 単体テスト+UI手動確認 |
+| FR-010 | due_dateをJST日時で設定でき、start_dateより前の値は拒否される。時刻入力枠クリックでタイムピッカーが開く | TC-013, TC-044, TC-106 | yes/manual | 単体テスト+UI手動確認 |
+| FR-011 | Todoに担当者名を紐づけ・解除でき、一覧と詳細に反映される | TC-014 | yes/manual | 単体テスト+UI手動確認 |
+| FR-012 | プロジェクトコンボボックスから検索・選択・解除でき、Todoに紐づくプロジェクトが保存される | TC-015 | yes/manual | 単体テスト+UI手動確認 |
+| FR-013 | 親タスクを設定・解除でき、一覧と詳細の両方で親タスク名が表示される | TC-017 | yes/manual | 単体テスト+UI手動確認 |
+| FR-014 | 自己参照・循環参照の親子設定が拒否され、親削除時に子のparent_todo_idがnullになる | TC-018, TC-019, TC-020 | yes | 単体テスト |
+| FR-015 | 作成/更新/削除/状態変更がページ全体再読み込みなしで即時反映される。フォームの補助文・サマリ・モード別文言・折りたたみが仕様どおり動作する | TC-023, TC-035, TC-036, TC-037, TC-047, TC-048 | manual | UI手動確認 |
+| FR-016 | デスクトップアプリ起動時にアプリケーションウィンドウ内で操作が完結する | TC-021 | no | 未実装 |
+| FR-017 | Web UIとデスクトップUIで主要機能が同等に動作する | TC-022 | no | 未実装 |
+| FR-018 | 通知設定の分前値変更が通知生成時刻に反映され、無効化時に通知が生成されない | TC-026, TC-027, TC-107, TC-108 | manual | UI手動確認 |
+| FR-019 | daily/weekly/monthly設定タスクを完了すると次回Todoが1件自動生成され、次回日時が正しく計算される | TC-028, TC-029 | manual | UI手動確認 |
+| FR-020 | エクスポートにTodo/担当者/プロジェクト/親子関係が含まれ、インポートで復元される | TC-030, TC-031 | no | 未実装 |
+| FR-021 | ドロップダウン内で新規プロジェクトを作成すると候補に即時反映され、管理ダイアログで編集・削除するとTodo表示と候補に即時反映される | TC-032, TC-033 | yes/manual | 単体テスト+UI手動確認 |
+| FR-022 | 「期限切れ」タブでdue_dateが現在日時より前かつ未完了のTodoのみ表示される | TC-041 | manual | UI手動確認 |
+| FR-023 | 「完了」タブでcompleted状態のTodoのみ表示される | TC-042 | manual | UI手動確認 |
+| FR-024 | 「今後」タブでstart_dateが現在日時より後の未完了Todoのみ表示される | TC-043 | manual | UI手動確認 |
+| NFR-001 | Todo1000件以下で一覧/作成/更新/削除APIの95パーセンタイル応答時間が500ms未満 | TC-090, TC-091, TC-092 | no | 性能テスト未実装 |
+| NFR-002 | すべてのサーバー側書き込み操作がトランザクション内で実行される | TC-093, TC-094, TC-095 | yes | コードレビューで確認 |
+| NFR-003 | クライアント側検証の有無にかかわらずサーバー側で入力検証が行われる | TC-004, TC-005, TC-013, TC-096, TC-097, TC-098 | yes | 単体テスト |
+| NFR-004 | デスクトップアプリのメインウィンドウ初回表示が3秒以内 | TC-099, TC-100, TC-101 | no | 未実装 |
+| NFR-005 | Web UIとデスクトップUIで主要操作フローの操作回数差が1操作以内 | TC-102, TC-103, TC-104 | no | 未実装 |
 
 ## 非機能要件
 - [ ] NFR-001: Todo件数1000件以下で、一覧/作成/更新/削除APIの95パーセンタイル応答時間を500ms未満とする。
@@ -291,6 +475,12 @@ Todoを削除する。
 | TC-003 | FR-003 | 削除確認を経て削除すると項目が残らない | 正常系 |
 | TC-004 | FR-004 | 空タイトルを拒否する | 異常系 |
 | TC-005 | FR-004 | タイトル121文字以上を拒否する | 境界値 |
+| TC-050 | FR-001 | titleがnullまたは空文字のリクエストでTodo作成が拒否される | 異常系 |
+| TC-051 | FR-001 | titleが1文字のTodoを作成できる | 境界値 |
+| TC-052 | FR-002 | 存在しないTodo IDへの更新リクエストが404を返す | 異常系 |
+| TC-053 | FR-002 | titleを120文字ちょうどに更新できる | 境界値 |
+| TC-054 | FR-003 | 存在しないTodo IDへの削除リクエストが404を返す | 異常系 |
+| TC-055 | FR-003 | 作成直後のTodoを即座に削除できる | 境界値 |
 
 ### グループB: 一覧・絞り込み・状態遷移
 | テストID | 対応要件 | テスト内容 | 種別 |
@@ -306,6 +496,20 @@ Todoを削除する。
 | TC-039 | FR-005 | 狭幅画面では一覧ヘッダー行を省略し、各Todoが`タイトル`、`期限`、`ステータス`、`操作`を優先した縦積みカード表示へ崩れる | UI結合テスト |
 | TC-045 | FR-005 | 一覧行の本文クリック、またはフォーカス後の`Enter`/`Space`で詳細を開閉できる | UI結合テスト |
 | TC-046 | FR-005 | ステータスが`待ち`や`完了`でも、デスクトップ一覧で`プロジェクト/親タスク`、`期限`、`ステータス`列の左位置が揃う | UI結合テスト |
+| TC-056 | FR-005 | Todo件数0件のとき一覧が空状態メッセージを表示する | 境界値 |
+| TC-057 | FR-005 | 不正なビュー名を指定した場合にデフォルトビューへフォールバックする | 異常系 |
+| TC-058 | FR-006 | 不正な状態値への変更リクエストが拒否される | 異常系 |
+| TC-059 | FR-006 | completedからactiveへ状態を戻せる | 境界値 |
+| TC-060 | FR-007 | 存在しない状態値で絞り込むと空の結果が返る | 異常系 |
+| TC-061 | FR-007 | 全状態が混在する一覧からcompletedのみを正しく絞り込める | 境界値 |
+| TC-062 | FR-008 | start_dateがJST現在日時ちょうどのTodoが表示対象に含まれる | 境界値 |
+| TC-105 | FR-008 | start_dateに不正な形式の値が設定されたTodoがあっても今日タブが正常に表示される | 異常系 |
+| TC-063 | FR-022 | due_date未設定のTodoは期限切れタブに表示されない | 異常系 |
+| TC-064 | FR-022 | due_dateがJST現在日時ちょうどのTodoの表示判定が正しい | 境界値 |
+| TC-065 | FR-023 | completed以外の状態のTodoが完了タブに表示されない | 異常系 |
+| TC-066 | FR-023 | completed直後のTodoが完了タブに即座に反映される | 境界値 |
+| TC-067 | FR-024 | start_date未設定のTodoが今後タブに表示されない | 異常系 |
+| TC-068 | FR-024 | start_dateがJST現在日時の1秒後のTodoが今後タブに表示される | 境界値 |
 
 ### グループC: 属性管理（開始予定日・締め切り・担当者・プロジェクト）
 | テストID | 対応要件 | テスト内容 | 種別 |
@@ -315,6 +519,15 @@ Todoを削除する。
 | TC-015 | FR-012 | ドロップダウン検索から事前作成したプロジェクトを1件選択してTodoへ紐づけ・解除できる | 正常系 |
 | TC-016 | FR-009 | start_dateをJST（UTC+09:00）で設定・更新・解除できる | 正常系 |
 | TC-044 | FR-009, FR-010 | 開始時刻/締切時刻の入力枠内をクリックすると、時計アイコン以外からでもネイティブタイムピッカーを開ける | UI結合テスト |
+| TC-106 | FR-010 | due_dateをJST日時で正常に設定・更新・解除できる | 正常系 |
+| TC-069 | FR-009 | 不正な日時形式のstart_dateが拒否される | 異常系 |
+| TC-070 | FR-009 | start_dateを設定後に解除（null）できる | 境界値 |
+| TC-071 | FR-010 | due_dateをstart_dateと同日時ちょうどに設定できる | 境界値 |
+| TC-072 | FR-010 | 不正な日時形式のdue_dateが拒否される | 異常系 |
+| TC-073 | FR-011 | 担当者を設定後に空文字で解除できる | 境界値 |
+| TC-074 | FR-011 | 存在しないTodo IDへの担当者設定が404を返す | 異常系 |
+| TC-075 | FR-012 | 存在しないproject_idを指定した場合にエラーが返る | 異常系 |
+| TC-076 | FR-012 | プロジェクト紐づけを解除（null）して保存できる | 境界値 |
 
 ### グループD: 親子タスク管理
 | テストID | 対応要件 | テスト内容 | 種別 |
@@ -323,6 +536,8 @@ Todoを削除する。
 | TC-018 | FR-014 | 自己参照の親子設定を拒否する | 異常系 |
 | TC-019 | FR-014 | 循環参照となる親子設定を拒否する | 異常系 |
 | TC-020 | FR-014 | 親タスク削除時に子タスクの`parent_todo_id`が`null`になる | 結合テスト |
+| TC-077 | FR-013 | 存在しないTodo IDを親に指定するとエラーが返る | 異常系 |
+| TC-078 | FR-013 | 子Todoが1件だけの最小親子構成を作成できる | 境界値 |
 
 ### グループE: クライアントUIモード
 | テストID | 対応要件 | テスト内容 | 種別 |
@@ -337,13 +552,18 @@ Todoを削除する。
 | TC-040 | FR-002 | 一覧の編集ボタンを押すと編集フォームが開き、その位置までスクロールしてタイトル入力へフォーカスする | UI結合テスト |
 | TC-047 | FR-001, FR-002 | 作成/編集フォームでタイトル欄は入力例プレースホルダを表示し、文字数制限は入力欄のカウンタで分かる。メモ欄は`メモ（任意）`ラベルと入力例プレースホルダを表示する | UI結合テスト |
 | TC-048 | FR-009, FR-010, FR-015 | 締切/開始予定は各グループ内に`日付`と`時刻`としてまとまり、日本時間案内は見出し横の控えめな補助テキストで表示される | UI結合テスト |
+| TC-079 | FR-015 | ネットワークエラー時にUI上でエラーメッセージが表示される | 異常系 |
+| TC-080 | FR-015 | 高速連続操作（作成→即削除）で状態が正しく同期される | 境界値 |
+| TC-081 | FR-016 | デスクトップアプリが外部ブラウザを起動しない | 境界値 |
+| TC-082 | FR-017 | Web UIとデスクトップUIの主要操作で結果が一致する | 境界値 |
+| TC-083 | FR-017 | 片方のモードだけに存在する機能がないことを確認する | 異常系 |
 
 ### グループF: 当日表示・通知・繰り返し・バックアップ
 | テストID | 対応要件 | テスト内容 | 種別 |
 |---------|---------|-----------|------|
 | TC-024 | FR-008 | `active`/`in_progress`/`waiting`で、`start_date`未設定またはJST現在日時以前のTodoが一覧表示される | 正常系 |
 | TC-025 | FR-008 | `completed`のTodoと、`start_date`がJST現在日時より未来のTodoは一覧表示されない | 正常系 |
-| TC-040 | FR-005, FR-008, FR-022, FR-023, FR-024 | 一覧タブで`今日`、`今後`、`期限切れ`、`完了`、`すべて`を往復でき、それぞれ件数と空状態文言が切り替わる | UI結合テスト |
+| TC-049 | FR-005, FR-008, FR-022, FR-023, FR-024 | 一覧タブで`今日`、`今後`、`期限切れ`、`完了`、`すべて`を往復でき、それぞれ件数と空状態文言が切り替わる | UI結合テスト |
 | TC-041 | FR-022 | `due_date`がJST現在日時より前で、`completed`以外のTodoだけが`期限切れ`タブに表示される | 正常系 |
 | TC-042 | FR-023 | `completed`状態のTodoだけが`完了`タブに表示される | 正常系 |
 | TC-043 | FR-024 | `active`/`in_progress`/`waiting`で、`start_date`がJST現在日時より後のTodoだけが`今後`タブに表示される | 正常系 |
@@ -355,6 +575,33 @@ Todoを削除する。
 | TC-031 | FR-020 | バックアップインポートでデータが復元される | 結合テスト |
 | TC-032 | FR-021 | ドロップダウン内の`+ 新しいプロジェクトを作成`でプロジェクトを作成すると、その場で候補へ反映され自動選択される | 結合テスト |
 | TC-033 | FR-021 | プロジェクト管理ダイアログでプロジェクトを編集・削除すると、既存Todo表示と選択候補へ即時反映される | 結合テスト |
+| TC-107 | FR-018 | 開始予定日/締め切りの設定分前どおりに通知が生成される | 正常系 |
+| TC-108 | FR-018 | 通知分前値に負数を設定した場合に通知が生成されない | 異常系 |
+| TC-084 | FR-018 | 通知分前を0に設定した場合の挙動が正しい | 境界値 |
+| TC-085 | FR-019 | recurrence_ruleがnone設定のタスクを完了しても次回タスクが生成されない | 異常系 |
+| TC-086 | FR-020 | 不正なフォーマットのインポートファイルがエラーを返す | 異常系 |
+| TC-087 | FR-020 | Todo件数0件のエクスポートが空でない有効なファイルを生成する | 境界値 |
+| TC-088 | FR-021 | 重複するプロジェクト名での作成が拒否される | 異常系 |
+| TC-089 | FR-021 | プロジェクト名を1文字で作成できる | 境界値 |
+
+### 非機能要件
+| テストID | 対応要件 | テスト内容 | 種別 |
+|---------|---------|-----------|------|
+| TC-090 | NFR-001 | Todo1000件でCRUD APIの95パーセンタイル応答時間が500ms未満である | 正常系 |
+| TC-091 | NFR-001 | Todo1001件目の作成時にも応答時間が著しく劣化しない | 境界値 |
+| TC-092 | NFR-001 | 大量の同時リクエスト時にタイムアウトやエラーが発生しない | 異常系 |
+| TC-093 | NFR-002 | 書き込み中にプロセスが停止してもデータ不整合が発生しない | 正常系 |
+| TC-094 | NFR-002 | 同時書き込みでデッドロックが発生しない | 異常系 |
+| TC-095 | NFR-002 | 1件の書き込みのみの場合もトランザクション内で実行される | 境界値 |
+| TC-096 | NFR-003 | 空タイトルや不正文字列をサーバー側で拒否する | 正常系 |
+| TC-097 | NFR-003 | SQLインジェクション文字列を含む入力が安全に処理される | 異常系 |
+| TC-098 | NFR-003 | XSS攻撃文字列を含む入力がエスケープされて表示される | 境界値 |
+| TC-099 | NFR-004 | デスクトップアプリのメインウィンドウが3秒以内に表示される | 正常系 |
+| TC-100 | NFR-004 | 大量データ存在時でも初回表示が3秒以内に収まる | 境界値 |
+| TC-101 | NFR-004 | デスクトップアプリが起動失敗時にエラーダイアログを表示する | 異常系 |
+| TC-102 | NFR-005 | Web UIとデスクトップUIの主要操作フローの操作回数差が1以内である | 正常系 |
+| TC-103 | NFR-005 | 操作回数が最も多い機能で差が1操作以内に収まる | 境界値 |
+| TC-104 | NFR-005 | 片方のモードで追加操作が必要な場合にその差が1操作以内である | 異常系 |
 
 ## 依存関係
 | 依存先 | 種別 | 説明 |
